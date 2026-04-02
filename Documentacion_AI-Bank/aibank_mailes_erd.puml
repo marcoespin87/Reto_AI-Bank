@@ -1,0 +1,287 @@
+@startuml AI-Bank_mAiles_ERD
+
+skinparam linetype ortho
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam handwritten false
+
+skinparam entity {
+  BackgroundColor #F1EFE8
+  BorderColor #B4B2A9
+  FontColor #3d3d3a
+  FontSize 13
+  FontStyle bold
+}
+
+skinparam class {
+  BackgroundColor #F1EFE8
+  BorderColor #B4B2A9
+  FontColor #3d3d3a
+}
+
+' ─────────────────────────────────────────
+' IDENTIDAD ECONÓMICA
+' ─────────────────────────────────────────
+
+entity "economic_tiers" as et {
+  * id : INT <<PK>>
+  --
+  nombre : VARCHAR
+  descripcion : TEXT
+  umbral_gasto_min : DECIMAL
+  umbral_gasto_max : DECIMAL
+}
+
+entity "users" as u {
+  * id : INT <<PK>>
+  --
+  nombre : VARCHAR
+  email : VARCHAR
+  fecha_nacimiento : DATE
+  fecha_registro : DATE
+  economic_tier_id : INT <<FK>>
+  mailes_acumulados : INT
+  mailes_canjeados : INT
+}
+
+entity "transactions" as tx {
+  * id : INT <<PK>>
+  --
+  user_id : INT <<FK>>
+  monto : DECIMAL
+  categoria : VARCHAR
+  fecha : DATE
+  mailes_generados : INT
+}
+
+' ─────────────────────────────────────────
+' TEMPORADAS Y LIGAS
+' ─────────────────────────────────────────
+
+entity "seasons" as s {
+  * id : INT <<PK>>
+  --
+  nombre : VARCHAR
+  fecha_inicio : DATE
+  fecha_fin : DATE
+  estado : ENUM(activa, finalizada)
+}
+
+entity "ligas" as l {
+  * id : INT <<PK>>
+  --
+  season_id : INT <<FK>>
+  economic_tier_id : INT <<FK>>
+  nombre : VARCHAR
+  descripcion : TEXT
+}
+
+entity "liga_medals" as lm {
+  * id : INT <<PK>>
+  --
+  liga_id : INT <<FK>>
+  numero_medalla : INT
+  nombre_medalla : VARCHAR
+  umbral_compras_por_estrella : INT
+}
+
+entity "liga_objectives" as lo {
+  * id : INT <<PK>>
+  --
+  liga_id : INT <<FK>>
+  nombre : VARCHAR
+  descripcion : TEXT
+  tipo : ENUM(racha_compra, umbral_gasto_grupal,\ntasa_prediccion, coleccion_stickers)
+  valor_objetivo : DECIMAL
+  recompensa_mailes : INT
+  periodo : ENUM(semanal, mensual, temporada)
+  es_objetivo_maximo : BOOLEAN
+}
+
+' ─────────────────────────────────────────
+' GRUPOS
+' ─────────────────────────────────────────
+
+entity "groups" as g {
+  * id : INT <<PK>>
+  --
+  nombre : VARCHAR
+  temporada_id : INT <<FK>>
+  creador_id : INT <<FK>>
+  liga_id : INT <<FK>>
+  tipo_formacion : ENUM(libre, matching)
+  max_miembros : INT
+}
+
+entity "group_members" as gm {
+  * id : INT <<PK>>
+  --
+  group_id : INT <<FK>>
+  user_id : INT <<FK>>
+  estado : ENUM(activo, pendiente, rechazado)
+  fecha_ingreso : DATE
+  mailes_aportados : INT
+  medalla_actual : INT
+  estrellas_actuales : INT
+}
+
+entity "group_join_votes" as gjv {
+  * id : INT <<PK>>
+  --
+  group_id : INT <<FK>>
+  candidato_id : INT <<FK>>
+  votante_id : INT <<FK>>
+  voto : ENUM(aprobado, rechazado)
+  fecha : DATE
+}
+
+entity "group_objective_progress" as gop {
+  * id : INT <<PK>>
+  --
+  group_id : INT <<FK>>
+  objective_id : INT <<FK>>
+  progreso_actual : DECIMAL
+  completado : BOOLEAN
+  fecha_completado : DATE
+}
+
+' ─────────────────────────────────────────
+' PARTIDOS Y PREDICCIONES
+' ─────────────────────────────────────────
+
+entity "matches" as m {
+  * id : INT <<PK>>
+  --
+  season_id : INT <<FK>>
+  equipo_local : VARCHAR
+  equipo_visitante : VARCHAR
+  fecha_partido : DATETIME
+  resultado_local : INT
+  resultado_visitante : INT
+}
+
+entity "match_stats" as ms {
+  * id : INT <<PK>>
+  --
+  match_id : INT <<FK>>
+  equipo : ENUM(local, visitante)
+  ultimos_5_resultados : JSON
+  h2h_ganados : INT
+  h2h_empatados : INT
+  h2h_perdidos : INT
+  goles_anotados_temporada : INT
+  goles_recibidos_temporada : INT
+  ranking_fifa : INT
+  jugadores_destacados : JSON
+  forma_actual : VARCHAR
+}
+
+entity "predictions" as p {
+  * id : INT <<PK>>
+  --
+  user_id : INT <<FK>>
+  match_id : INT <<FK>>
+  group_id : INT <<FK>>
+  res_predicho_local : INT
+  res_predicho_visitante : INT
+  es_correcto : BOOLEAN
+  mailes_ganados : INT
+}
+
+' ─────────────────────────────────────────
+' STICKERS
+' ─────────────────────────────────────────
+
+entity "stickers" as st {
+  * id : INT <<PK>>
+  --
+  match_id : INT <<FK>>
+  nombre : VARCHAR
+  imagen_url : VARCHAR
+  rareza : ENUM(comun, raro, epico)
+}
+
+entity "user_stickers" as us {
+  * id : INT <<PK>>
+  --
+  user_id : INT <<FK>>
+  sticker_id : INT <<FK>>
+  fecha_obtencion : DATE
+  origen : ENUM(gasto, prediccion, racha, medalla)
+}
+
+' ─────────────────────────────────────────
+' PREMIOS Y GANADORES
+' ─────────────────────────────────────────
+
+entity "rewards" as r {
+  * id : INT <<PK>>
+  --
+  temporada_id : INT <<FK>>
+  liga_id : INT <<FK>>
+  nombre : VARCHAR
+  descripcion : TEXT
+  tipo : ENUM(tecnologia, viajes, experiencias, premium)
+}
+
+entity "season_winners" as sw {
+  * id : INT <<PK>>
+  --
+  season_id : INT <<FK>>
+  liga_id : INT <<FK>>
+  user_id : INT <<FK>>
+  group_id : INT <<FK>>
+  reward_id : INT <<FK>>
+  fecha_asignacion : DATE
+}
+
+' ─────────────────────────────────────────
+' RELACIONES
+' ─────────────────────────────────────────
+
+' Identidad económica
+et ||--o{ u         : "clasifica"
+et ||--o{ l         : "define"
+
+' Usuarios
+u  ||--o{ tx        : "genera"
+u  ||--o{ gm        : "pertenece"
+u  ||--o{ p         : "realiza"
+u  ||--o{ us        : "colecciona"
+u  ||--o{ sw        : "gana"
+
+' Temporadas
+s  ||--o{ l         : "contiene"
+s  ||--o{ m         : "programa"
+s  ||--o{ r         : "ofrece"
+s  ||--o{ sw        : "cierra"
+
+' Ligas
+l  ||--o{ lm        : "tiene medallas"
+l  ||--o{ g         : "agrupa"
+l  ||--o{ lo        : "define objetivos"
+l  ||--o{ r         : "acota premios"
+l  ||--o{ sw        : "clasifica ganadores"
+
+' Grupos
+g  ||--o{ gm        : "incluye"
+g  ||--o{ gjv       : "vota ingreso"
+g  ||--o{ gop       : "progresa en"
+g  ||--o{ p         : "contextualiza"
+g  ||--o{ sw        : "gana"
+
+' Objetivos
+lo ||--o{ gop       : "mide"
+
+' Partidos
+m  ||--o{ ms        : "tiene estadísticas"
+m  ||--o{ p         : "recibe predicciones"
+m  ||--o{ st        : "genera stickers"
+
+' Stickers
+st ||--o{ us        : "coleccionado en"
+
+' Premios
+r  ||--o{ sw        : "asignado en"
+
+@enduml
