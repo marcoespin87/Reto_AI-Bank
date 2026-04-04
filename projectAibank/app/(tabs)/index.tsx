@@ -246,7 +246,7 @@ async function onRefresh() {
           <Text style={s.navIcon}>👥</Text>
           <Text style={s.navLabel}>Grupo</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={handleLogout}>
+        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/perfil')}>
           <Text style={s.navIcon}>👤</Text>
           <Text style={s.navLabel}>Perfil</Text>
         </TouchableOpacity>

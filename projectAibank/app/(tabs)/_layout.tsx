@@ -6,6 +6,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="explore" />
       <Tabs.Screen name="banco" />
+      <Tabs.Screen name="perfil" />
     </Tabs>
   );
 }
