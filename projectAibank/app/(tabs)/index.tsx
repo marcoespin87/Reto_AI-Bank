@@ -1,44 +1,54 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, Alert
+  StyleSheet, SafeAreaView, Alert, RefreshControl
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
+
 
 export default function HomeScreen() {
   const [userName, setUserName] = useState('');
   const [mailes, setMailes] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [saldo, setSaldo] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadUserData();
   }, []);
 
-  async function loadUserData() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+async function loadUserData() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-    const { data } = await supabase
-      .from('users')
-      .select('nombre, mailes_acumulados')
-      .eq('email', user.email)
-      .single();
+  const { data } = await supabase
+    .from('users')
+    .select('id, nombre, mailes_acumulados, saldo')
+    .eq('email', user.email)
+    .single();
 
-    if (data) {
-      setUserName(data.nombre?.split(' ')[0] || 'Usuario');
-      setMailes(data.mailes_acumulados || 0);
-    }
+  if (data) {
+    setUserName(data.nombre?.split(' ')[0] || 'Usuario');
+    setMailes(data.mailes_acumulados || 0);
+    setSaldo(data.saldo || 0);
 
     const { data: txs } = await supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', data.id)
       .order('fecha', { ascending: false })
-      .limit(5);
+      .limit(3);
 
     if (txs) setTransactions(txs);
   }
+}
+
+async function onRefresh() {
+  setRefreshing(true);
+  await loadUserData();
+  setRefreshing(false);
+}
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -56,8 +66,18 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={s.root}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-
+<ScrollView
+  showsVerticalScrollIndicator={false}
+  contentContainerStyle={s.scroll}
+  refreshControl={
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor="#b2c5ff"
+      colors={['#b2c5ff']}
+    />
+  }
+>
         {/* Header */}
         <View style={s.header}>
           <View style={s.headerLeft}>
@@ -84,7 +104,7 @@ export default function HomeScreen() {
           </View>
           <View style={s.cardMid}>
             <Text style={s.cardBalanceLabel}>Saldo disponible</Text>
-            <Text style={s.cardBalance}>$4,280.50</Text>
+            <Text style={s.cardBalance}>${saldo.toLocaleString('es', { minimumFractionDigits: 2 })}</Text>
           </View>
           <View style={s.cardBottom}>
             <Text style={s.cardNumber}>•••• •••• •••• 4821</Text>
@@ -154,61 +174,54 @@ export default function HomeScreen() {
         {/* Recent Transactions */}
         <View style={s.transHeader}>
           <Text style={s.sectionTitle}>Movimientos recientes</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/banco')}>
             <Text style={s.seeAll}>Ver todo</Text>
           </TouchableOpacity>
         </View>
 
-        {transactions.length === 0 ? (
-          <View style={s.emptyTx}>
-            <Text style={s.emptyTxText}>Aún no tienes movimientos</Text>
+        {transactions.length > 0 ? (
+        transactions.map((tx) => (
+          <View key={tx.id} style={s.txItem}>
+            <View style={s.txIconWrap}>
+              <Text style={s.txIcon}>
+                {categoryIcon[tx.categoria?.toLowerCase()] || categoryIcon.default}
+              </Text>
+            </View>
+            <View style={s.txInfo}>
+              <Text style={s.txName}>{tx.categoria}</Text>
+              <Text style={s.txDate}>{tx.fecha}</Text>
+            </View>
+            <View style={s.txRight}>
+              <Text style={s.txAmount}>-${Number(tx.monto).toFixed(2)}</Text>
+              {tx.mailes_generados > 0 && (
+                <Text style={s.txMailes}>+{tx.mailes_generados} mAiles</Text>
+              )}
+            </View>
           </View>
-        ) : (
-          transactions.map((tx) => (
-            <View key={tx.id} style={s.txItem}>
+        ))
+      ) : (
+        <>
+          {[
+            { name: 'Supermercado Premium', time: 'Hace 2 horas', amount: '$45.00', mailes: '+18 mAiles', icon: '🛒' },
+            { name: 'Star Stadium Coffee', time: 'Ayer, 09:15 AM', amount: '$8.50', mailes: '+2 mAiles', icon: '☕' },
+            { name: 'Entradas Final Mundial', time: '12 Jun', amount: '$1,200.00', mailes: '+500 mAiles', icon: '⚽' },
+          ].map((item, i) => (
+            <View key={i} style={s.txItem}>
               <View style={s.txIconWrap}>
-                <Text style={s.txIcon}>
-                  {categoryIcon[tx.categoria?.toLowerCase()] || categoryIcon.default}
-                </Text>
+                <Text style={s.txIcon}>{item.icon}</Text>
               </View>
               <View style={s.txInfo}>
-                <Text style={s.txName}>{tx.categoria}</Text>
-                <Text style={s.txDate}>{tx.fecha} • Tarjeta</Text>
+                <Text style={s.txName}>{item.name}</Text>
+                <Text style={s.txDate}>{item.time}</Text>
               </View>
               <View style={s.txRight}>
-                <Text style={s.txAmount}>${tx.monto.toFixed(2)}</Text>
-                {tx.mailes_generados > 0 && (
-                  <Text style={s.txMailes}>+{tx.mailes_generados} mAiles</Text>
-                )}
+                <Text style={s.txAmount}>{item.amount}</Text>
+                <Text style={s.txMailes}>{item.mailes}</Text>
               </View>
             </View>
-          ))
-        )}
-
-        {/* Demo transactions if no real data */}
-        {transactions.length === 0 && (
-          <>
-            {[
-              { name: 'Supermercado Premium', time: 'Hace 2 horas', amount: '$45.00', mailes: '+18 mAiles', icon: '🛒' },
-              { name: 'Star Stadium Coffee', time: 'Ayer, 09:15 AM', amount: '$8.50', mailes: '+2 mAiles', icon: '☕' },
-              { name: 'Entradas Final Mundial', time: '12 Jun', amount: '$1,200.00', mailes: '+500 mAiles', icon: '⚽' },
-            ].map((item, i) => (
-              <View key={i} style={s.txItem}>
-                <View style={s.txIconWrap}>
-                  <Text style={s.txIcon}>{item.icon}</Text>
-                </View>
-                <View style={s.txInfo}>
-                  <Text style={s.txName}>{item.name}</Text>
-                  <Text style={s.txDate}>{item.time}</Text>
-                </View>
-                <View style={s.txRight}>
-                  <Text style={s.txAmount}>{item.amount}</Text>
-                  <Text style={s.txMailes}>{item.mailes}</Text>
-                </View>
-              </View>
-            ))}
-          </>
-        )}
+          ))}
+        </>
+      )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -219,7 +232,7 @@ export default function HomeScreen() {
           <Text style={s.navIconActive}>🏠</Text>
           <Text style={s.navLabelActive}>Inicio</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.navItem}>
+        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/banco')}>
           <Text style={s.navIcon}>🏦</Text>
           <Text style={s.navLabel}>Banco</Text>
         </TouchableOpacity>
