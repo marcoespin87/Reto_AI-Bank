@@ -25,13 +25,11 @@ export default function LoginScreen() {
     if (error) Alert.alert('Error', error.message);
   }
 
-async function handleGoogleLogin() {
-  const redirectUrl = 'projectaibank://';
-
+  async function handleGoogleLogin() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: redirectUrl,
+      redirectTo: 'projectaibank://',
       skipBrowserRedirect: true,
     },
   });
@@ -42,14 +40,7 @@ async function handleGoogleLogin() {
   }
 
   if (data?.url) {
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-
-    if (result.type === 'success') {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        await supabase.auth.refreshSession();
-      }
-    }
+    await WebBrowser.openBrowserAsync(data.url);
   }
 }
 

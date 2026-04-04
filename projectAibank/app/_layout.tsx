@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import * as Linking from 'expo-linking';
 
 export default function RootLayout() {
 
@@ -22,7 +23,36 @@ export default function RootLayout() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    const handleDeepLink = async (event: { url: string }) => {
+      const url = event.url;
+      const params: Record<string, string> = {};
+
+      const hashPart = url.split('#')[1];
+      if (hashPart) {
+        hashPart.split('&').forEach(part => {
+          const [key, value] = part.split('=');
+          if (key && value) params[key] = decodeURIComponent(value);
+        });
+      }
+
+      if (params.access_token && params.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: params.access_token,
+          refresh_token: params.refresh_token,
+        });
+      }
+    };
+
+    const linkingSub = Linking.addEventListener('url', handleDeepLink);
+
+    Linking.getInitialURL().then(url => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      linkingSub.remove();
+    };
   }, []);
 
   return (
