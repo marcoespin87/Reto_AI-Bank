@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, Alert, RefreshControl
+  StyleSheet, SafeAreaView, Alert, RefreshControl, Image
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
@@ -13,6 +13,8 @@ export default function HomeScreen() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [saldo, setSaldo] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const DOLARES_POR_CROMO = 20;
+  const [misStickersRecientes, setMisStickersRecientes] = useState<any[]>([]);
 
   useEffect(() => {
     loadUserData();
@@ -28,7 +30,7 @@ async function loadUserData() {
     .eq('email', user.email)
     .single();
 
-  if (data) {
+if (data) {
     setUserName(data.nombre?.split(' ')[0] || 'Usuario');
     setMailes(data.mailes_acumulados || 0);
     setSaldo(data.saldo || 0);
@@ -41,6 +43,15 @@ async function loadUserData() {
       .limit(3);
 
     if (txs) setTransactions(txs);
+
+    const { data: stickersRecientes } = await supabase
+      .from('user_stickers')
+      .select('*, stickers(*)')
+      .eq('user_id', data.id)
+      .order('fecha_obtencion', { ascending: false })
+      .limit(3);
+
+    if (stickersRecientes) setMisStickersRecientes(stickersRecientes);
   }
 }
 
@@ -171,6 +182,44 @@ async function onRefresh() {
           <Text style={s.nextStar}>⭐ próxima estrella en 4 compras más</Text>
         </View>
 
+        {/* Cromos Recientes */}
+        <View style={s.transHeader}>
+          <Text style={s.sectionTitle}>Cromos recientes</Text>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/album')}>
+            <Text style={s.seeAll}>Ver álbum →</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+          {misStickersRecientes.length === 0 ? (
+            <View style={s.emptyCromos}>
+              <Text style={s.emptyCromosText}>🃏 Gasta ${DOLARES_POR_CROMO} para obtener tu primer cromo</Text>
+            </View>
+          ) : (
+            misStickersRecientes.slice(0, 3).map((us: any, i: number) => (
+              <TouchableOpacity
+                key={i}
+                style={s.cromoCard}
+                onPress={() => router.replace('/(tabs)/album')}
+              >
+                <Image
+                  source={{ uri: us.stickers?.imagen_url }}
+                  style={s.cromoImage}
+                  style={[s.cromoImage, { resizeMode: 'cover' }]}
+                />
+                <View style={[s.cromoBadge, {
+                  backgroundColor: us.stickers?.rareza === 'epico' ? 'rgba(240,193,16,0.8)' :
+                    us.stickers?.rareza === 'raro' ? 'rgba(91,140,255,0.8)' : 'rgba(66,70,85,0.8)'
+                }]}>
+                  <Text style={s.cromoBadgeText}>
+                    {us.stickers?.rareza === 'epico' ? 'ÉPICO' : us.stickers?.rareza === 'raro' ? 'RARO' : 'COMÚN'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+
         {/* Recent Transactions */}
         <View style={s.transHeader}>
           <Text style={s.sectionTitle}>Movimientos recientes</Text>
@@ -236,13 +285,13 @@ async function onRefresh() {
           <Text style={s.navIcon}>🏦</Text>
           <Text style={s.navLabel}>Banco</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.navCenter}>
+        <TouchableOpacity style={s.navCenter} onPress={() => router.push('/(tabs)/mundial')}>
           <View style={s.navCenterBtn}>
             <Text style={s.navCenterIcon}>⚽</Text>
           </View>
           <Text style={s.navCenterLabel}>Mundial</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.navItem}>
+        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/grupo')}>
           <Text style={s.navIcon}>👥</Text>
           <Text style={s.navLabel}>Grupo</Text>
         </TouchableOpacity>
@@ -341,4 +390,10 @@ const s = StyleSheet.create({
   navCenterBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#b2c5ff', alignItems: 'center', justifyContent: 'center', marginBottom: 4, borderWidth: 3, borderColor: '#071325' },
   navCenterIcon: { fontSize: 26 },
   navCenterLabel: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
+  emptyCromos: { backgroundColor: '#101c2e', borderRadius: 16, padding: 20, marginRight: 12, justifyContent: 'center', width: 280 },
+  emptyCromosText: { color: '#424655', fontSize: 12, textAlign: 'center' },
+  cromoCard: { width: 100, aspectRatio: 3/4, borderRadius: 12, marginRight: 10, overflow: 'hidden', borderWidth: 1.5, borderColor: '#1f2a3d', position: 'relative' },
+  cromoImage: { width: '100%', height: '100%' },
+  cromoBadge: { position: 'absolute', bottom: 4, left: 4, right: 4, paddingVertical: 2, borderRadius: 6, alignItems: 'center' },
+  cromoBadgeText: { color: '#fff', fontSize: 7, fontWeight: '800' },
 });

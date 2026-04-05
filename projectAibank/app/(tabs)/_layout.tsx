@@ -7,6 +7,9 @@ export default function TabLayout() {
       <Tabs.Screen name="explore" />
       <Tabs.Screen name="banco" />
       <Tabs.Screen name="perfil" />
+      <Tabs.Screen name="grupo" />
+      <Tabs.Screen name="album" />
+      <Tabs.Screen name="mundial" />
     </Tabs>
   );
 }

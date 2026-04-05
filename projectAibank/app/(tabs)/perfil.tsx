@@ -285,7 +285,7 @@ export default function PerfilScreen() {
           <Text style={s.navIcon}>🏦</Text>
           <Text style={s.navLabel}>Banco</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.navCenter}>
+        <TouchableOpacity style={s.navCenter} onPress={() => router.replace('/(tabs)/mundial')}>
           <View style={s.navCenterBtn}>
             <Text style={s.navCenterIcon}>⚽</Text>
           </View>

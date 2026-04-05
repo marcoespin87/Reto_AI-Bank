@@ -1,3 +1,4 @@
+import SobreModal from '../../components/SobreModal';
 import { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -17,6 +18,9 @@ export default function BancoScreen() {
   const [modal, setModal] = useState<'transferir' | 'pagar' | 'compra' | null>(null);
   const [monto, setMonto] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const DOLARES_POR_CROMO = 20;
+  const [sobresModalVisible, setSobresModalVisible] = useState(false);
+  const [cromosGanadosData, setCromosGanadosData] = useState<any[]>([]);
 
   useEffect(() => {
     loadData();
@@ -95,23 +99,52 @@ async function handleTransaction(categoria: string) {
 
   await supabase
     .from('users')
-    .update({
-      saldo: nuevoSaldo,
-      mailes_acumulados: nuevoMailes,
-    })
+    .update({ saldo: nuevoSaldo, mailes_acumulados: nuevoMailes })
     .eq('id', userId);
 
-  setSaldo(nuevoSaldo);
-  setMonto('');
-  setDescripcion('');
-  setModal(null);
-  setLoading(false);
-  loadData();
+  const cromosGanados = Math.floor(montoNum / DOLARES_POR_CROMO);
+  const cromosNuevos: any[] = [];
 
+  if (cromosGanados > 0) {
+    const { data: allStickers } = await supabase
+      .from('stickers')
+      .select('id, nombre, imagen_url, rareza');
+
+    if (allStickers && allStickers.length > 0) {
+      const cromosAInsertar = [];
+      for (let i = 0; i < cromosGanados; i++) {
+        const randomSticker = allStickers[Math.floor(Math.random() * allStickers.length)];
+        cromosAInsertar.push({
+          user_id: userId,
+          sticker_id: randomSticker.id,
+          fecha_obtencion: new Date().toISOString().split('T')[0],
+          origen: 'gasto',
+        });
+        cromosNuevos.push({ stickers: randomSticker });
+      }
+      await supabase.from('user_stickers').insert(cromosAInsertar);
+    }
+  }
+
+setSaldo(nuevoSaldo);
+setMonto('');
+setDescripcion('');
+setLoading(false);
+loadData();
+
+if (cromosNuevos.length > 0) {
+  setCromosGanadosData(cromosNuevos);
+  setModal(null);
+  setTimeout(() => {
+    setSobresModalVisible(true);
+  }, 400);
+} else {
+  setModal(null);
   Alert.alert(
     '¡Listo!',
     `Transacción de $${montoNum.toFixed(2)} realizada.\n+${mailesGanados} mAiles ganados 🌟`
   );
+}
 }
 
   const categoryIcon: Record<string, string> = {
@@ -315,6 +348,15 @@ async function handleTransaction(categoria: string) {
           </View>
         </View>
       </Modal>
+      <SobreModal
+        visible={sobresModalVisible}
+        cromos={cromosGanadosData}
+        onClose={() => setSobresModalVisible(false)}
+        onAgregarAlbum={() => {
+          setSobresModalVisible(false);
+          router.replace('/(tabs)/album');
+        }}
+      />
     </SafeAreaView>
   );
 }
