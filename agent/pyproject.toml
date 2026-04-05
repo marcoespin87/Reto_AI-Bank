@@ -1,0 +1,17 @@
+[project]
+name = "agent-mundial-2026"
+version = "1.0.0"
+description = "Microservicio de análisis deportivo — Mundial 2026"
+requires-python = ">=3.11"
+dependencies = [
+    "deepagents>=0.1.0",
+    "langchain-google-genai>=2.0.0",
+    "langchain-tavily>=0.1.0",
+    "langgraph>=0.2.0",
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+]
+
+[tool.uv]
+package = false

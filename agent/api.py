@@ -2,17 +2,27 @@
 API REST para el chatbot deportivo AI-Bank — Mundial 2026.
 
 Expone el pipeline de Deep Agents (Analista → Censor) como un endpoint HTTP
-consumible desde cualquier interfaz externa.
+consumible desde cualquier interfaz externa (Next.js, etc.).
 
-Uso:
-  uv run uvicorn agent.api:app --host 0.0.0.0 --port 8000 --reload
+Uso (standalone, desde dentro de agent/):
+  uv run uvicorn api:app --host 0.0.0.0 --port 8001 --reload
+
+Uso (desde la raíz del proyecto):
+  uv run uvicorn agent.api:app --host 0.0.0.0 --port 8001 --reload
 
 Endpoints:
   POST /chat          — Envía una consulta al pipeline de agentes
   GET  /health        — Verifica que el servicio está activo
 """
 
+import os
+import sys
 import uuid
+
+_here = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(_here)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
