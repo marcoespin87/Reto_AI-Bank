@@ -65,22 +65,10 @@ export default function PerfilScreen() {
     setRefreshing(false);
   }
 
-  async function handleLogout() {
-    Alert.alert(
-      'Cerrar sesión',
-      '¿Estás seguro que quieres salir?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Salir', style: 'destructive',
-          onPress: async () => {
-            await supabase.auth.signOut();
-            router.replace('/(auth)/login');
-          }
-        }
-      ]
-    );
-  }
+async function handleLogout() {
+  await supabase.auth.signOut();
+  router.replace('/(auth)/login');
+}
 
   const medallas = [1, 2, 3, 4, 5, 6];
 

@@ -25,6 +25,9 @@ export default function GrupoScreen() {
 
   const [nombreGrupo, setNombreGrupo] = useState('');
   const [codigoInput, setCodigoInput] = useState('');
+  const [userMailes, setUserMailes] = useState(0);
+  const [gruposMatch, setGruposMatch] = useState<any[]>([]);
+  const [modalResultadoMatch, setModalResultadoMatch] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -34,13 +37,14 @@ export default function GrupoScreen() {
 
     const { data: userData } = await supabase
       .from('users')
-      .select('id, nombre, email')
+      .select('id, nombre, email, mailes_acumulados')
       .eq('email', user.email)
       .single();
 
     if (!userData) return;
     setUserId(userData.id);
     setUserEmail(userData.email);
+    setUserMailes(userData.mailes_acumulados || 0);
 
     const { data: memberData } = await supabase
       .from('group_members')
@@ -121,7 +125,7 @@ export default function GrupoScreen() {
         creador_id: userId,
         liga_id: 8,
         tipo_formacion: 'libre',
-        max_miembros: 10,
+        max_miembros: 5,
         codigo_invitacion: codigo,
       })
       .select()
@@ -208,97 +212,180 @@ export default function GrupoScreen() {
     Alert.alert('¡Solicitud enviada!', 'Los miembros del grupo deben aprobar tu ingreso.');
   }
 
-  async function matchmaking() {
-    if (!userId) return;
-    setLoading(true);
-    setModalMatchmaking(false);
+async function matchmaking() {
+  if (!userId) return;
+  setLoading(true);
+  setModalMatchmaking(false);
 
-    const { data: userData } = await supabase
-      .from('users')
-      .select('economic_tier_id, saldo')
-      .eq('id', userId)
-      .single();
+  const RANGO_MAILES = 500;
 
-    const { data: gruposDisponibles } = await supabase
-      .from('groups')
-      .select('*, group_members(count)')
-      .eq('liga_id', 8)
-      .lt('max_miembros', 10);
+  const { data: userData } = await supabase
+    .from('users')
+    .select('mailes_acumulados, liga_id:economic_tier_id')
+    .eq('id', userId)
+    .single();
 
-    if (!gruposDisponibles || gruposDisponibles.length === 0) {
-      setLoading(false);
-      Alert.alert('Sin grupos disponibles', 'No hay grupos con perfiles similares disponibles. Intenta crear uno nuevo.');
-      return;
-    }
+  if (!userData) {
+    setLoading(false);
+    Alert.alert('Error', 'No se pudo obtener tu perfil');
+    return;
+  }
 
-    const grupoAleatorio = gruposDisponibles[Math.floor(Math.random() * gruposDisponibles.length)];
+  const misMailes = userData.mailes_acumulados || 0;
+  const minMailes = misMailes - RANGO_MAILES;
+  const maxMailes = misMailes + RANGO_MAILES;
 
+  const { data: gruposDisponibles } = await supabase
+    .from('groups')
+    .select(`
+      id,
+      nombre,
+      codigo_invitacion,
+      max_miembros,
+      liga_id,
+      group_members!inner(
+        user_id,
+        estado,
+        users(mailes_acumulados)
+      )
+    `)
+    .eq('liga_id', 8)
+    .neq('creador_id', userId);
+
+  if (!gruposDisponibles || gruposDisponibles.length === 0) {
+    setLoading(false);
+    Alert.alert(
+      'Sin grupos disponibles',
+      'No encontramos grupos con tu rango de mAiles (±500). Intenta crear uno nuevo.'
+    );
+    return;
+  }
+
+  const gruposFiltrados = gruposDisponibles.filter((g: any) => {
+    const miembrosActivos = g.group_members?.filter((m: any) => m.estado === 'activo') || [];
+    if (miembrosActivos.length >= g.max_miembros) return false;
+
+    const yaSoyMiembro = miembrosActivos.some((m: any) => m.user_id === userId);
+    if (yaSoyMiembro) return false;
+
+    const promedioMailes = miembrosActivos.reduce((sum: number, m: any) => {
+      return sum + (m.users?.mailes_acumulados || 0);
+    }, 0) / (miembrosActivos.length || 1);
+
+    return promedioMailes >= minMailes && promedioMailes <= maxMailes;
+  });
+
+  if (gruposFiltrados.length === 0) {
+    setLoading(false);
+    Alert.alert(
+      'Sin coincidencias',
+      `No hay grupos con promedio de mAiles entre ${minMailes.toLocaleString()} y ${maxMailes.toLocaleString()}.\n\nTus mAiles actuales: ${misMailes.toLocaleString()}`
+    );
+    return;
+  }
+
+  setGruposMatch(gruposFiltrados);
+  setLoading(false);
+  setModalResultadoMatch(true);
+}
+
+async function unirseAGrupoMatch(grupoId: number, grupoNombre: string) {
+  if (!userId) return;
+  setLoading(true);
+  setModalResultadoMatch(false);
+
+  const { data: yaExiste } = await supabase
+    .from('group_members')
+    .select('id')
+    .eq('group_id', grupoId)
+    .eq('user_id', userId)
+    .single();
+
+  if (yaExiste) {
+    setLoading(false);
+    Alert.alert('Aviso', 'Ya tienes una solicitud pendiente en este grupo');
+    return;
+  }
+
+  const { error } = await supabase
+    .from('group_members')
+    .insert({
+      group_id: grupoId,
+      user_id: userId,
+      estado: 'pendiente',
+      mailes_aportados: 0,
+      medalla_actual: 1,
+      estrellas_actuales: 0,
+    });
+
+  if (error) {
+    setLoading(false);
+    Alert.alert('Error', error.message);
+    return;
+  }
+
+  setLoading(false);
+  loadData();
+  Alert.alert(
+    '¡Solicitud enviada! 🎯',
+    `Tu solicitud para unirte a "${grupoNombre}" fue enviada.\n\nTodos los miembros deben aprobarla para que puedas ingresar.`
+  );
+}
+
+async function aprobarMiembro(candidatoId: number) {
+  if (!grupo || !userId) return;
+
+  const { data: votosExistentes } = await supabase
+    .from('group_join_votes')
+    .select('id')
+    .eq('group_id', grupo.id)
+    .eq('candidato_id', candidatoId)
+    .eq('votante_id', userId)
+    .single();
+
+  if (votosExistentes) {
+    Alert.alert('Aviso', 'Ya votaste por este candidato');
+    return;
+  }
+
+  await supabase
+    .from('group_join_votes')
+    .insert({
+      group_id: grupo.id,
+      candidato_id: candidatoId,
+      votante_id: userId,
+      voto: 'aprobado',
+      fecha: new Date().toISOString().split('T')[0],
+    });
+
+  const { count: votosAprobados } = await supabase
+    .from('group_join_votes')
+    .select('*', { count: 'exact', head: true })
+    .eq('group_id', grupo.id)
+    .eq('candidato_id', candidatoId)
+    .eq('voto', 'aprobado');
+
+  const totalMiembros = miembros.length;
+
+  if ((votosAprobados || 0) >= totalMiembros) {
     await supabase
       .from('group_members')
-      .insert({
-        group_id: grupoAleatorio.id,
-        user_id: userId,
-        estado: 'pendiente',
-        mailes_aportados: 0,
-        medalla_actual: 1,
-        estrellas_actuales: 0,
-      });
-
-    setLoading(false);
-    loadData();
-    Alert.alert('¡Match encontrado!', `Te uniste a ${grupoAleatorio.nombre}. Los miembros deben aprobar tu ingreso.`);
-  }
-
-  async function aprobarMiembro(candidatoId: number) {
-    if (!grupo || !userId) return;
-
-    const { data: votosExistentes } = await supabase
-      .from('group_join_votes')
-      .select('id')
+      .update({
+        estado: 'activo',
+        fecha_ingreso: new Date().toISOString().split('T')[0],
+      })
       .eq('group_id', grupo.id)
-      .eq('candidato_id', candidatoId)
-      .eq('votante_id', userId)
-      .single();
+      .eq('user_id', candidatoId);
 
-    if (votosExistentes) {
-      Alert.alert('Aviso', 'Ya votaste por este candidato');
-      return;
-    }
-
-    await supabase
-      .from('group_join_votes')
-      .insert({
-        group_id: grupo.id,
-        candidato_id: candidatoId,
-        votante_id: userId,
-        voto: 'aprobado',
-        fecha: new Date().toISOString().split('T')[0],
-      });
-
-    const { count: votosAprobados } = await supabase
-      .from('group_join_votes')
-      .select('*', { count: 'exact', head: true })
-      .eq('group_id', grupo.id)
-      .eq('candidato_id', candidatoId)
-      .eq('voto', 'aprobado');
-
-    const mitad = Math.ceil(miembros.length / 2);
-    if ((votosAprobados || 0) >= mitad) {
-      await supabase
-        .from('group_members')
-        .update({
-          estado: 'activo',
-          fecha_ingreso: new Date().toISOString().split('T')[0],
-        })
-        .eq('group_id', grupo.id)
-        .eq('user_id', candidatoId);
-
-      Alert.alert('¡Aprobado!', 'El miembro ha sido aceptado en el grupo.');
-    } else {
-      Alert.alert('Voto registrado', `Votos: ${votosAprobados}/${mitad} necesarios`);
-    }
-    loadData();
+    Alert.alert('¡Aprobado! 🎉', 'Todos los miembros aprobaron. El nuevo integrante ya es parte del grupo.');
+  } else {
+    Alert.alert(
+      'Voto registrado ✓',
+      `${votosAprobados} de ${totalMiembros} votos necesarios.\nFaltan ${totalMiembros - (votosAprobados || 0)} votos más.`
+    );
   }
+  loadData();
+}
 
   async function rechazarMiembro(candidatoId: number) {
     if (!grupo) return;
@@ -434,6 +521,48 @@ export default function GrupoScreen() {
                 {loading ? <ActivityIndicator color="#002b73" /> : <Text style={s.btnPrimaryText}>🎯 Buscar match</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={s.btnCancel} onPress={() => setModalMatchmaking(false)}>
+                <Text style={s.btnCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={modalResultadoMatch} transparent animationType="slide">
+          <View style={s.modalOverlay}>
+            <View style={s.modalCard}>
+              <Text style={s.modalTitle}>🎯 Grupos compatibles</Text>
+              <Text style={s.matchmakingDesc}>
+                Encontramos {gruposMatch.length} grupo{gruposMatch.length > 1 ? 's' : ''} con mAiles similares a los tuyos (±500).
+              </Text>
+              <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+                {gruposMatch.map((g: any) => {
+                  const miembrosActivos = g.group_members?.filter((m: any) => m.estado === 'activo') || [];
+                  const promedioMailes = Math.round(
+                    miembrosActivos.reduce((sum: number, m: any) =>
+                      sum + (m.users?.mailes_acumulados || 0), 0
+                    ) / (miembrosActivos.length || 1)
+                  );
+                  return (
+                    <View key={g.id} style={s.grupoMatchItem}>
+                      <View style={s.grupoMatchInfo}>
+                        <Text style={s.grupoMatchNombre}>{g.nombre}</Text>
+                        <Text style={s.grupoMatchSub}>
+                          👥 {miembrosActivos.length}/{g.max_miembros} miembros
+                          {'  '}⭐ {promedioMailes.toLocaleString()} mAiles promedio
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={s.btnUnirse}
+                        onPress={() => unirseAGrupoMatch(g.id, g.nombre)}
+                        disabled={loading}
+                      >
+                        <Text style={s.btnUnirseText}>Unirse</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+              <TouchableOpacity style={s.btnCancel} onPress={() => setModalResultadoMatch(false)}>
                 <Text style={s.btnCancelText}>Cancelar</Text>
               </TouchableOpacity>
             </View>
@@ -762,4 +891,10 @@ const s = StyleSheet.create({
   navCenterBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#b2c5ff', alignItems: 'center', justifyContent: 'center', marginBottom: 4, borderWidth: 3, borderColor: '#071325' },
   navCenterIcon: { fontSize: 26 },
   navCenterLabel: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
+  grupoMatchItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#1f2a3d' },
+grupoMatchInfo: { flex: 1, marginRight: 12 },
+grupoMatchNombre: { color: '#d7e3fc', fontSize: 14, fontWeight: '700' },
+grupoMatchSub: { color: '#8c90a1', fontSize: 11, marginTop: 2 },
+btnUnirse: { backgroundColor: '#b2c5ff', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+btnUnirseText: { color: '#002b73', fontWeight: '800', fontSize: 12 },
 });
