@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
 
 
 export default function HomeScreen() {
@@ -15,6 +16,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const DOLARES_POR_CROMO = 20;
   const [misStickersRecientes, setMisStickersRecientes] = useState<any[]>([]);
+  const [numeroCuenta, setNumeroCuenta] = useState('');
 
   useEffect(() => {
     loadUserData();
@@ -26,7 +28,7 @@ async function loadUserData() {
 
   const { data } = await supabase
     .from('users')
-    .select('id, nombre, mailes_acumulados, saldo')
+    .select('id, nombre, mailes_acumulados, saldo, numero_cuenta')
     .eq('email', user.email)
     .single();
 
@@ -34,6 +36,7 @@ if (data) {
     setUserName(data.nombre?.split(' ')[0] || 'Usuario');
     setMailes(data.mailes_acumulados || 0);
     setSaldo(data.saldo || 0);
+    setNumeroCuenta(data.numero_cuenta || '');
 
     const { data: txs } = await supabase
       .from('transactions')
@@ -53,6 +56,17 @@ if (data) {
 
     if (stickersRecientes) setMisStickersRecientes(stickersRecientes);
   }
+}
+
+async function handleCopiarCuenta() {
+  if (!numeroCuenta) return;
+  await Clipboard.setStringAsync(numeroCuenta);
+  Alert.alert('Copiado', 'Número de cuenta copiado al portapapeles');
+}
+
+function formatNumeroCuenta(num: string) {
+  if (!num) return '•••• •••• •••• ••••';
+  return num.replace(/(.{4})/g, '$1 ').trim();
 }
 
 async function onRefresh() {
@@ -118,25 +132,14 @@ async function onRefresh() {
             <Text style={s.cardBalance}>${saldo.toLocaleString('es', { minimumFractionDigits: 2 })}</Text>
           </View>
           <View style={s.cardBottom}>
-            <Text style={s.cardNumber}>•••• •••• •••• 4821</Text>
+            <TouchableOpacity onPress={handleCopiarCuenta} activeOpacity={0.7}>
+              <Text style={s.cardNumber}>{formatNumeroCuenta(numeroCuenta)}</Text>
+              <Text style={{ color: 'rgba(0,43,115,0.5)', fontSize: 9, marginTop: 2 }}> </Text>
+            </TouchableOpacity>
             <View style={s.cardChip}>
               <View style={s.chipCircle1} />
               <View style={s.chipCircle2} />
             </View>
-          </View>
-
-          {/* Quick Actions inside card */}
-          <View style={s.cardActions}>
-            {[
-              { icon: '↗', label: 'Transferir' },
-              { icon: '💳', label: 'Pagar' },
-              { icon: '＋', label: 'Recargar' },
-            ].map((action) => (
-              <TouchableOpacity key={action.label} style={s.cardAction}>
-                <Text style={s.cardActionIcon}>{action.icon}</Text>
-                <Text style={s.cardActionLabel}>{action.label}</Text>
-              </TouchableOpacity>
-            ))}
           </View>
         </View>
 
@@ -205,7 +208,6 @@ async function onRefresh() {
                 <Image
                   source={{ uri: us.stickers?.imagen_url }}
                   style={s.cromoImage}
-                  style={[s.cromoImage, { resizeMode: 'cover' }]}
                 />
                 <View style={[s.cromoBadge, {
                   backgroundColor: us.stickers?.rareza === 'epico' ? 'rgba(240,193,16,0.8)' :
@@ -319,7 +321,7 @@ const s = StyleSheet.create({
   leagueBadgeText: { color: '#b2c5ff', fontSize: 10, fontWeight: '700' },
 
   // Bank Card
-  card: { backgroundColor: '#b2c5ff', borderRadius: 24, padding: 24, marginBottom: 16, overflow: 'hidden', position: 'relative' },
+  card: { backgroundColor: '#b2c5ff', borderRadius: 24, padding: 24, marginBottom: 16, overflow: 'hidden', position: 'relative', aspectRatio: 1.6 },
   cardPatternCircle: { position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.1)' },
   cardPatternLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, backgroundColor: 'rgba(0,0,0,0.05)' },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
@@ -328,7 +330,7 @@ const s = StyleSheet.create({
   cardMid: { marginBottom: 16 },
   cardBalanceLabel: { color: 'rgba(0,43,115,0.6)', fontSize: 11, fontWeight: '500' },
   cardBalance: { color: '#002b73', fontSize: 36, fontWeight: '800', letterSpacing: -1 },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardNumber: { color: '#002b73', fontFamily: 'monospace', fontSize: 13, letterSpacing: 3 },
   cardChip: { flexDirection: 'row' },
   chipCircle1: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,214,91,0.8)', marginRight: -8 },
