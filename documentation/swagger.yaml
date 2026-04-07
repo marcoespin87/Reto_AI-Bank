@@ -1,0 +1,1932 @@
+openapi: 3.0.3
+info:
+  title: AI Bank Gamificación API
+  description: |
+    API REST para el sistema de gamificación, fidelización y premios del banco.
+
+    ## Reglas de Negocio Clave
+    - **Millas**: 8 por cada $1 USD de consumo. Activo permanente, nunca caducan.
+    - **Puntos**: 10 por cada $1 USD de consumo + 500 por pronóstico correcto. Se reinician al cierre de temporada.
+    - **Cromos**: 1 por cada $10 USD (Común 75%, Raro 20%, Épico 5%).
+    - **Ligas**: Bronce (0-4,999) | Plata (5,000-14,999) | Oro (15,000-29,999) | Diamante (30,000+).
+    - **Millas**: 1 Milla = $0.01 USD.
+  version: 1.0.0
+  contact:
+    name: AI Bank Team
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Servidor de Desarrollo
+
+tags:
+  - name: Personas
+    description: Registro y gestión de clientes del banco
+  - name: Perfil
+    description: Perfil gamificado del usuario
+  - name: Consumo
+    description: Registro de gastos y generación de recompensas
+  - name: Ligas
+    description: Ligas competitivas y rankings
+  - name: Temporadas
+    description: Gestión de temporadas del torneo
+  - name: Partidos
+    description: Partidos del torneo
+  - name: Pronósticos
+    description: Predicciones de usuarios para partidos
+  - name: Cromos
+    description: Sistema de cromos coleccionables
+  - name: Premios
+    description: Catálogo y canje de premios
+  - name: Transferencias
+    description: Transferencias bancarias
+  - name: Grupos
+    description: Grupos de usuarios
+
+# ─────────────────────────────────────────────
+# PATHS
+# ─────────────────────────────────────────────
+paths:
+
+  # ── PERSONAS ──────────────────────────────
+  /personas:
+    post:
+      tags: [Personas]
+      summary: Registrar nueva persona (US-01)
+      description: |
+        Crea un registro en `persona` y automáticamente crea un `perfil` con
+        millas=0, puntos=0 asignado a Liga Bronce.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePersonaDto'
+            example:
+              nombre: "María García"
+              mail: "maria@example.com"
+              celular: "0991234567"
+              numero_cuenta: "ECU-001-2025"
+              nacimiento: "1997-03-15"
+              nacionalidad: "Ecuatoriana"
+              residencia: "Quito"
+              ciudad: "Quito"
+              edad: 29
+              genero: "F"
+              nivel_educacion: "universitario"
+              ocupacion: "empleado_privado"
+              usa_app_movil: true
+              dispositivo_preferido: "Android"
+              username: "maria_garcia"
+      responses:
+        '201':
+          description: Persona y perfil creados exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonaConPerfilResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Correo, número de cuenta o username ya registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 409
+                error: "Conflict"
+                message: "El mail 'maria@example.com' ya está registrado."
+
+  /personas/{id}:
+    get:
+      tags: [Personas]
+      summary: Obtener datos de una persona
+      parameters:
+        - $ref: '#/components/parameters/IdPersona'
+      responses:
+        '200':
+          description: Datos de la persona
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonaResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Personas]
+      summary: Actualizar datos demográficos (US-02)
+      description: Actualiza solo campos demográficos. No modifica millas ni puntos.
+      parameters:
+        - $ref: '#/components/parameters/IdPersona'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePersonaDto'
+      responses:
+        '200':
+          description: Persona actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonaResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── PERFIL ────────────────────────────────
+  /perfil/{id}:
+    get:
+      tags: [Perfil]
+      summary: Obtener perfil gamificado completo (US-02)
+      description: |
+        Retorna balance de millas, puntos, liga actual y equivalente USD de millas.
+        La liga se valida en tiempo real contra los umbrales de puntos.
+      parameters:
+        - $ref: '#/components/parameters/IdPerfil'
+      responses:
+        '200':
+          description: Perfil gamificado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerfilDetalladoResponse'
+              example:
+                id_perfil: 1
+                username: "maria_garcia"
+                millas: 2840
+                millas_usd_equivalente: 28.40
+                puntos: 5200
+                liga:
+                  id_liga: 2
+                  nombre: "Plata"
+                  rango_inicio: 5000
+                  rango_fin: 14999
+                persona:
+                  nombre: "María García"
+                  mail: "maria@example.com"
+                  ciudad: "Quito"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /perfil/persona/{id_persona}:
+    get:
+      tags: [Perfil]
+      summary: Obtener perfil por ID de persona
+      parameters:
+        - name: id_persona
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Perfil del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerfilDetalladoResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── CONSUMO ───────────────────────────────
+  /consumo:
+    post:
+      tags: [Consumo]
+      summary: Registrar consumo y distribuir recompensas (US-03)
+      description: |
+        Registra una transacción de consumo y aplica automáticamente:
+        - **8 Millas** por $1 USD gastado
+        - **10 Puntos** por $1 USD gastado
+        - **1 Cromo** por cada $10 USD (rareza aleatoria: Común 75%, Raro 20%, Épico 5%)
+        - Recalcula la liga del usuario
+        - Registra log en `logs_puntos`
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConsumoDto'
+            example:
+              id_persona: 1
+              monto: 150.00
+              descripcion: "Compra en Amazon - Electrónicos"
+              id_producto_persona: 3
+              ubicacion: "Online"
+              diferido: false
+              id_tag: 1
+      responses:
+        '201':
+          description: Consumo registrado y recompensas distribuidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsumoRecompensaResponse'
+              example:
+                consumo:
+                  id_consumo: 42
+                  monto: 150.00
+                  descripcion: "Compra en Amazon - Electrónicos"
+                  fecha: "2026-04-06T14:30:00Z"
+                recompensas:
+                  millas_generadas: 1200
+                  puntos_generados: 1500
+                  cromos_generados: 15
+                  detalle_cromos:
+                    - rareza: "comun"
+                      nombre: "Ecuador - Jugador #1"
+                    - rareza: "epico"
+                      nombre: "Brasil - Jugador #7"
+                perfil_actualizado:
+                  millas: 4040
+                  puntos: 6700
+                  liga_anterior: "Plata"
+                  liga_actual: "Plata"
+                  cambio_liga: false
+        '400':
+          description: Monto inválido o datos faltantes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 400
+                error: "Bad Request"
+                message: "El monto debe ser mayor a 0."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /consumo/persona/{id_persona}:
+    get:
+      tags: [Consumo]
+      summary: Historial de consumos de una persona (US-04)
+      parameters:
+        - name: id_persona
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: fecha_inicio
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: fecha_fin
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Listado paginado de consumos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedConsumoResponse'
+
+  # ── LIGAS ─────────────────────────────────
+  /ligas:
+    get:
+      tags: [Ligas]
+      summary: Listar todas las ligas con sus umbrales
+      responses:
+        '200':
+          description: Listado de ligas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Liga'
+              example:
+                - id_liga: 1
+                  nombre: "Bronce"
+                  rango_inicio: 0
+                  rango_fin: 4999
+                - id_liga: 2
+                  nombre: "Plata"
+                  rango_inicio: 5000
+                  rango_fin: 14999
+                - id_liga: 3
+                  nombre: "Oro"
+                  rango_inicio: 15000
+                  rango_fin: 29999
+                - id_liga: 4
+                  nombre: "Diamante"
+                  rango_inicio: 30000
+                  rango_fin: 999999999
+
+  /ligas/{id}/ranking:
+    get:
+      tags: [Ligas]
+      summary: Ranking de usuarios en una liga (US-05)
+      description: Lista usuarios ordenados por puntos descendente dentro de la liga.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Ranking de la liga
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RankingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ligas/ranking/global:
+    get:
+      tags: [Ligas]
+      summary: Ranking global de todos los usuarios
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Ranking global
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RankingResponse'
+
+  # ── TEMPORADAS ────────────────────────────
+  /temporadas:
+    get:
+      tags: [Temporadas]
+      summary: Listar temporadas
+      responses:
+        '200':
+          description: Listado de temporadas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Temporada'
+    post:
+      tags: [Temporadas]
+      summary: Crear nueva temporada (US-06) [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemporadaDto'
+            example:
+              nombre: "Mundial 2026"
+              fecha_inicio: "2026-06-11"
+              fecha_fin: "2026-07-19"
+      responses:
+        '201':
+          description: Temporada creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Temporada'
+        '400':
+          description: Fechas inválidas o ya existe temporada activa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 400
+                error: "Bad Request"
+                message: "La fecha_fin debe ser posterior a fecha_inicio."
+        '409':
+          description: Ya existe una temporada activa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 409
+                error: "Conflict"
+                message: "Ya existe una temporada activa. Debe cerrarla antes de crear una nueva."
+
+  /temporadas/activa:
+    get:
+      tags: [Temporadas]
+      summary: Obtener la temporada actualmente activa
+      responses:
+        '200':
+          description: Temporada activa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Temporada'
+        '404':
+          description: No hay temporada activa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /temporadas/{id}/cerrar:
+    post:
+      tags: [Temporadas]
+      summary: Cerrar temporada y reiniciar puntos (US-07) [Admin]
+      description: |
+        Operación atómica que:
+        1. Guarda snapshot histórico en `logs_puntos` (concepto CIERRE_TEMPORADA)
+        2. Guarda estado final en `perfilesliga`
+        3. Reinicia `perfil.puntos = 0` para TODOS los perfiles
+        4. Las millas permanecen intactas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Temporada cerrada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CierreTemporadaResponse'
+              example:
+                mensaje: "Temporada 'Mundial 2026' cerrada exitosamente."
+                perfiles_procesados: 1248
+                temporada:
+                  id_temporada: 1
+                  nombre: "Mundial 2026"
+                  fecha_fin: "2026-07-19"
+                  estado: "cerrada"
+        '400':
+          description: La temporada ya fue cerrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── PARTIDOS ──────────────────────────────
+  /partidos:
+    get:
+      tags: [Partidos]
+      summary: Listar partidos
+      parameters:
+        - name: id_temporada
+          in: query
+          schema:
+            type: integer
+        - name: solo_futuros
+          in: query
+          description: Si true, retorna solo partidos con fecha futura (elegibles para pronóstico)
+          schema:
+            type: boolean
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Listado de partidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PartidoResponse'
+    post:
+      tags: [Partidos]
+      summary: Crear partido (US-08) [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePartidoDto'
+            example:
+              id_pais_local: 1
+              id_pais_visitante: 2
+              fecha: "2026-06-15T18:00:00Z"
+              id_temporada: 1
+      responses:
+        '201':
+          description: Partido creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartidoResponse'
+        '400':
+          description: Países iguales o datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 400
+                error: "Bad Request"
+                message: "El equipo local y visitante no pueden ser el mismo país."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /partidos/{id}:
+    get:
+      tags: [Partidos]
+      summary: Obtener partido por ID
+      parameters:
+        - $ref: '#/components/parameters/IdGenerico'
+      responses:
+        '200':
+          description: Detalle del partido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartidoResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /partidos/{id}/resultado:
+    put:
+      tags: [Partidos]
+      summary: Ingresar resultado oficial y evaluar pronósticos (US-09) [Admin]
+      description: |
+        Registra el resultado y evalúa automáticamente todos los pronósticos:
+        - Acierto exacto (score + ganador correcto) → **+500 Puntos**
+        - Fallo → **0 Puntos** (sin deducciones)
+      parameters:
+        - $ref: '#/components/parameters/IdGenerico'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResultadoPartidoDto'
+            example:
+              goles_local: 2
+              goles_visitante: 1
+              ganador: "local"
+      responses:
+        '200':
+          description: Resultado registrado y pronósticos evaluados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoPartidoResponse'
+              example:
+                partido:
+                  id_partido: 5
+                  goles_local: 2
+                  goles_visitante: 1
+                  ganador: "local"
+                evaluacion:
+                  total_pronosticos: 320
+                  pronosticos_correctos: 47
+                  puntos_distribuidos: 23500
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── PRONÓSTICOS ───────────────────────────
+  /pronosticos:
+    post:
+      tags: [Pronósticos]
+      summary: Registrar pronóstico de partido (US-10)
+      description: |
+        Solo permite pronósticos para partidos con fecha futura.
+        Un usuario solo puede tener un pronóstico por partido.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePronosticoDto'
+            example:
+              id_perfil: 1
+              id_partido: 5
+              score_local: 2
+              score_visitante: 1
+              ganador: "local"
+      responses:
+        '201':
+          description: Pronóstico registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PronosticoResponse'
+        '400':
+          description: Partido ya ocurrió o datos del ganador inconsistentes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                partido_pasado:
+                  value:
+                    statusCode: 400
+                    error: "Bad Request"
+                    message: "No se puede pronosticar un partido cuya fecha ya pasó."
+                ganador_inconsistente:
+                  value:
+                    statusCode: 400
+                    error: "Bad Request"
+                    message: "El campo 'ganador' es inconsistente con los scores indicados."
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: El usuario ya tiene un pronóstico para este partido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 409
+                error: "Conflict"
+                message: "Ya existe un pronóstico para este partido en este perfil."
+
+  /pronosticos/perfil/{id_perfil}:
+    get:
+      tags: [Pronósticos]
+      summary: Listar pronósticos de un perfil
+      parameters:
+        - name: id_perfil
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: id_temporada
+          in: query
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Listado de pronósticos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PronosticoResponse'
+
+  /pronosticos/{id}:
+    get:
+      tags: [Pronósticos]
+      summary: Obtener pronóstico por ID
+      parameters:
+        - $ref: '#/components/parameters/IdGenerico'
+      responses:
+        '200':
+          description: Detalle del pronóstico
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PronosticoResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── CROMOS ────────────────────────────────
+  /cromos:
+    get:
+      tags: [Cromos]
+      summary: Catálogo global de cromos (US-12)
+      parameters:
+        - name: frecuencia
+          in: query
+          schema:
+            type: string
+            enum: [comun, raro, epico]
+        - name: id_pais
+          in: query
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Catálogo de cromos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cromo'
+
+  /cromos/perfil/{id_perfil}:
+    get:
+      tags: [Cromos]
+      summary: Colección de cromos de un usuario (US-11)
+      parameters:
+        - name: id_perfil
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: frecuencia
+          in: query
+          schema:
+            type: string
+            enum: [comun, raro, epico]
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Colección del usuario con estadísticas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColeccionCromosResponse'
+              example:
+                estadisticas:
+                  total_cromos: 87
+                  comunes: 65
+                  raros: 17
+                  epicos: 5
+                  total_disponibles: 200
+                  porcentaje_completitud: 43.5
+                cromos:
+                  - id_cromos_perfil: 1
+                    fecha: "2026-03-15T10:00:00Z"
+                    cromo:
+                      id_cromos: 12
+                      nombre: "Ecuador - Jugador #10"
+                      frecuencia: "epico"
+                      url_imagen: "https://cdn.aibank.com/cromos/ecu-10.png"
+                      pais:
+                        id_paises: 1
+                        nombre: "Ecuador"
+
+  # ── PREMIOS ───────────────────────────────
+  /premios:
+    get:
+      tags: [Premios]
+      summary: Catálogo de premios personalizado por ML (US-13)
+      description: |
+        Construye el JSON de perfil ML del usuario, lo envía al microservicio externo
+        y retorna los premios filtrados por la macrocategoría de afinidad y la liga del usuario.
+
+        Si el microservicio ML no está disponible, retorna el catálogo general con header `X-ML-Fallback: true`.
+      parameters:
+        - name: id_perfil
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Catálogo de premios personalizado
+          headers:
+            X-ML-Fallback:
+              schema:
+                type: boolean
+              description: "true si el ML no estuvo disponible y se usa catálogo genérico"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogoPremiosResponse'
+              example:
+                categoria_afinidad: "tecnologia"
+                liga_usuario: "Plata"
+                premios:
+                  - id_premios: 3
+                    nombre: "Auriculares Bluetooth Premium"
+                    millas_costo: 15000
+                    equivalente_usd: 150.00
+                    tag:
+                      id_tag: 1
+                      descripcion: "tecnologia"
+                    liga_minima: "Plata"
+
+  /premios/canjear:
+    post:
+      tags: [Premios]
+      summary: Canjear un premio con millas (US-14)
+      description: |
+        Las millas son la ÚNICA moneda válida para canje. Los puntos no sirven.
+        El balance de millas nunca puede quedar negativo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CanjearPremioDto'
+            example:
+              id_perfil: 1
+              id_premios: 3
+      responses:
+        '201':
+          description: Premio canjeado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanjePremioResponse'
+              example:
+                canje:
+                  id_premios: 3
+                  nombre: "Auriculares Bluetooth Premium"
+                  otorgado_en: "2026-04-06T14:30:00Z"
+                  id_liga: 2
+                  id_tag: 1
+                  id_perfil: 1
+                millas_descontadas: 15000
+                millas_restantes: 2840
+        '402':
+          description: Millas insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 402
+                error: "Payment Required"
+                message: "Millas insuficientes. Necesitas 15,000 millas pero tienes 2,840."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── TRANSFERENCIAS ────────────────────────
+  /transferencias:
+    post:
+      tags: [Transferencias]
+      summary: Registrar transferencia bancaria (US-15)
+      description: |
+        Genera millas para el emisor: 8 millas por $1 USD transferido.
+        Estado inicial: "Pendiente".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransferenciaDto'
+            example:
+              id_persona_emisora: 1
+              id_persona_receptora: 2
+              monto: 200.00
+      responses:
+        '201':
+          description: Transferencia registrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferenciaResponse'
+              example:
+                transferencia:
+                  id_transferencias: 15
+                  monto: 200.00
+                  estado: "Pendiente"
+                  fecha_transferencia: "2026-04-06T14:30:00Z"
+                  mailes_generados: 1600
+                millas_emisor_actualizadas: 4440
+        '400':
+          description: Monto inválido o emisor igual a receptor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                monto_invalido:
+                  value:
+                    statusCode: 400
+                    error: "Bad Request"
+                    message: "El monto debe ser mayor a 0."
+                misma_persona:
+                  value:
+                    statusCode: 400
+                    error: "Bad Request"
+                    message: "El emisor y receptor no pueden ser la misma persona."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /transferencias/persona/{id_persona}:
+    get:
+      tags: [Transferencias]
+      summary: Historial de transferencias de una persona
+      parameters:
+        - name: id_persona
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Historial de transferencias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransferenciaResponse'
+
+  # ── GRUPOS ────────────────────────────────
+  /grupos:
+    post:
+      tags: [Grupos]
+      summary: Crear grupo (US-16)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGrupoDto'
+            example:
+              nombre: "Los Campeones"
+              id_perfil: 1
+      responses:
+        '201':
+          description: Grupo creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoResponse'
+        '409':
+          description: Nombre de grupo duplicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /grupos/{id}:
+    get:
+      tags: [Grupos]
+      summary: Obtener grupo con ranking de miembros
+      parameters:
+        - $ref: '#/components/parameters/IdGenerico'
+      responses:
+        '200':
+          description: Grupo con ranking interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoDetalleResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /grupos/{id}/miembros:
+    post:
+      tags: [Grupos]
+      summary: Unirse a un grupo
+      parameters:
+        - $ref: '#/components/parameters/IdGenerico'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_perfil]
+              properties:
+                id_perfil:
+                  type: integer
+      responses:
+        '200':
+          description: Miembro agregado al grupo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrupoResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+# ─────────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────────
+components:
+
+  # ── PARAMETERS ──────────────────────────────
+  parameters:
+    IdPersona:
+      name: id
+      in: path
+      required: true
+      description: ID de la persona
+      schema:
+        type: integer
+        minimum: 1
+    IdPerfil:
+      name: id
+      in: path
+      required: true
+      description: ID del perfil
+      schema:
+        type: integer
+        minimum: 1
+    IdGenerico:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  # ── RESPONSES ───────────────────────────────
+  responses:
+    BadRequest:
+      description: Datos de entrada inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 404
+            error: "Not Found"
+            message: "El recurso solicitado no existe."
+
+  # ── SCHEMAS ─────────────────────────────────
+  schemas:
+
+    # ── DTOs de Entrada ─────────────────────
+
+    CreatePersonaDto:
+      type: object
+      required:
+        - nombre
+        - mail
+        - celular
+        - numero_cuenta
+        - username
+      properties:
+        nombre:
+          type: string
+          maxLength: 255
+        nacimiento:
+          type: string
+          format: date
+        nacionalidad:
+          type: string
+        residencia:
+          type: string
+        numero_cuenta:
+          type: string
+        mail:
+          type: string
+          format: email
+        celular:
+          type: string
+        empresa:
+          type: string
+        cargo:
+          type: string
+        num_productos_bancarios:
+          type: integer
+          minimum: 0
+          default: 0
+        score_crediticio:
+          type: number
+          minimum: 0
+          maximum: 1000
+        tiene_credito_activo:
+          type: boolean
+          default: false
+        tiene_cuenta_ahorro:
+          type: boolean
+          default: false
+        meses_sin_mora:
+          type: integer
+          minimum: 0
+          default: 0
+        edad:
+          type: integer
+          minimum: 0
+          maximum: 120
+        genero:
+          type: string
+          enum: [M, F, otro]
+        ciudad:
+          type: string
+        nivel_educacion:
+          type: string
+          enum: [primaria, secundaria, universitario, posgrado, ninguno]
+        ocupacion:
+          type: string
+        usa_app_movil:
+          type: boolean
+          default: false
+        notificaciones_activadas:
+          type: boolean
+          default: false
+        dispositivo_preferido:
+          type: string
+          enum: [Android, iOS, Web]
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+
+    UpdatePersonaDto:
+      type: object
+      description: Solo campos demográficos actualizables. No incluye millas ni puntos.
+      properties:
+        nombre:
+          type: string
+        nacimiento:
+          type: string
+          format: date
+        nacionalidad:
+          type: string
+        residencia:
+          type: string
+        celular:
+          type: string
+        empresa:
+          type: string
+        cargo:
+          type: string
+        ciudad:
+          type: string
+        nivel_educacion:
+          type: string
+          enum: [primaria, secundaria, universitario, posgrado, ninguno]
+        ocupacion:
+          type: string
+        usa_app_movil:
+          type: boolean
+        notificaciones_activadas:
+          type: boolean
+        dispositivo_preferido:
+          type: string
+          enum: [Android, iOS, Web]
+        sesiones_app_semana:
+          type: integer
+          minimum: 0
+
+    CreateConsumoDto:
+      type: object
+      required:
+        - id_persona
+        - monto
+      properties:
+        id_persona:
+          type: integer
+          minimum: 1
+        monto:
+          type: number
+          minimum: 0.01
+          description: "Monto en USD. Debe ser > 0."
+        descripcion:
+          type: string
+        id_producto_persona:
+          type: integer
+          description: ID del producto bancario del usuario utilizado (opcional)
+        ubicacion:
+          type: string
+        diferido:
+          type: boolean
+          default: false
+        id_tag:
+          type: integer
+          description: Tag de categoría de consumo (para ML y tagsconsumo)
+
+    CreateTemporadaDto:
+      type: object
+      required:
+        - nombre
+        - fecha_inicio
+        - fecha_fin
+      properties:
+        nombre:
+          type: string
+          maxLength: 255
+        fecha_inicio:
+          type: string
+          format: date
+        fecha_fin:
+          type: string
+          format: date
+          description: "Debe ser mayor a fecha_inicio."
+
+    CreatePartidoDto:
+      type: object
+      required:
+        - id_pais_local
+        - id_pais_visitante
+        - fecha
+        - id_temporada
+      properties:
+        id_pais_local:
+          type: integer
+          description: "No puede ser igual a id_pais_visitante."
+        id_pais_visitante:
+          type: integer
+        fecha:
+          type: string
+          format: date-time
+          description: "Puede ser futura o pasada. Solo los futuros aceptan pronósticos."
+        id_temporada:
+          type: integer
+
+    ResultadoPartidoDto:
+      type: object
+      required:
+        - goles_local
+        - goles_visitante
+        - ganador
+      properties:
+        goles_local:
+          type: integer
+          minimum: 0
+        goles_visitante:
+          type: integer
+          minimum: 0
+        ganador:
+          type: string
+          enum: [local, visitante, empate]
+          description: "Debe ser consistente con los goles."
+
+    CreatePronosticoDto:
+      type: object
+      required:
+        - id_perfil
+        - id_partido
+        - score_local
+        - score_visitante
+        - ganador
+      properties:
+        id_perfil:
+          type: integer
+        id_partido:
+          type: integer
+          description: "El partido debe tener fecha futura."
+        score_local:
+          type: integer
+          minimum: 0
+        score_visitante:
+          type: integer
+          minimum: 0
+        ganador:
+          type: string
+          enum: [local, visitante, empate]
+          description: |
+            Debe ser consistente con los scores:
+            - 'local' si score_local > score_visitante
+            - 'visitante' si score_visitante > score_local
+            - 'empate' si score_local == score_visitante
+
+    CanjearPremioDto:
+      type: object
+      description: "Usa el PK real de la tabla `premios`: campo `id_premios`."
+      required:
+        - id_perfil
+        - id_premios
+      properties:
+        id_perfil:
+          type: integer
+        id_premios:
+          type: integer
+          description: "PK de la tabla `premios` (id_premios). Era 'id_premio_catalogo' — corregido para coincidir con BD."
+
+    CreateTransferenciaDto:
+      type: object
+      required:
+        - id_persona_emisora
+        - id_persona_receptora
+        - monto
+      properties:
+        id_persona_emisora:
+          type: integer
+          description: "No puede ser igual a id_persona_receptora."
+        id_persona_receptora:
+          type: integer
+        monto:
+          type: number
+          minimum: 0.01
+          description: "Debe ser > 0."
+
+    CreateGrupoDto:
+      type: object
+      required:
+        - nombre
+        - id_perfil
+      properties:
+        nombre:
+          type: string
+          maxLength: 255
+          description: "Debe ser único en el sistema."
+        id_perfil:
+          type: integer
+          description: "Perfil creador del grupo. Queda con rol 'lider'."
+
+    # ── Respuestas / Entidades ───────────────
+
+    ErrorResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+
+    Liga:
+      type: object
+      properties:
+        id_liga:
+          type: integer
+        nombre:
+          type: string
+          enum: [Bronce, Plata, Oro, Diamante]
+        rango_inicio:
+          type: integer
+        rango_fin:
+          type: integer
+
+    PersonaResponse:
+      type: object
+      description: "Campos mapeados 1:1 con la tabla `persona` de BD."
+      properties:
+        id_persona:
+          type: integer
+        nombre:
+          type: string
+        mail:
+          type: string
+        celular:
+          type: string
+        numero_cuenta:
+          type: string
+        nacimiento:
+          type: string
+          format: date
+        nacionalidad:
+          type: string
+        residencia:
+          type: string
+        ciudad:
+          type: string
+        empresa:
+          type: string
+        cargo:
+          type: string
+        edad:
+          type: integer
+        genero:
+          type: string
+        nivel_educacion:
+          type: string
+        ocupacion:
+          type: string
+        num_productos_bancarios:
+          type: integer
+        score_crediticio:
+          type: number
+        tiene_credito_activo:
+          type: boolean
+        tiene_cuenta_ahorro:
+          type: boolean
+        meses_sin_mora:
+          type: integer
+        usa_app_movil:
+          type: boolean
+        notificaciones_activadas:
+          type: boolean
+        sesiones_app_semana:
+          type: integer
+        dispositivo_preferido:
+          type: string
+        compras_online_pct:
+          type: number
+        mailes_acumuladas:
+          type: number
+          description: "Campo BD: persona.mailes_acumuladas. Historial acumulado de millas (no se reinicia con temporada)."
+        medalla_final:
+          type: string
+          nullable: true
+        estrellas_finales:
+          type: integer
+        predicciones_correctas_pct:
+          type: number
+          nullable: true
+        racha_maxima_predicciones:
+          type: integer
+        cromos_coleccionados:
+          type: integer
+        cromos_epicos_obtenidos:
+          type: integer
+        participo_en_grupo:
+          type: boolean
+        rol_en_grupo:
+          type: string
+          nullable: true
+        dias_activo_temporada:
+          type: integer
+        fecha_creacion:
+          type: string
+          format: date
+        updated_at:
+          type: string
+          format: date-time
+
+    PersonaConPerfilResponse:
+      type: object
+      properties:
+        persona:
+          $ref: '#/components/schemas/PersonaResponse'
+        perfil:
+          type: object
+          properties:
+            id_perfil:
+              type: integer
+            username:
+              type: string
+            millas:
+              type: number
+            puntos:
+              type: integer
+            liga:
+              $ref: '#/components/schemas/Liga'
+            fecha_inicio:
+              type: string
+              format: date
+
+    PerfilDetalladoResponse:
+      type: object
+      properties:
+        id_perfil:
+          type: integer
+        username:
+          type: string
+        millas:
+          type: number
+        millas_usd_equivalente:
+          type: number
+          description: "millas * 0.01"
+        puntos:
+          type: integer
+        liga:
+          $ref: '#/components/schemas/Liga'
+        persona:
+          $ref: '#/components/schemas/PersonaResponse'
+        fecha_inicio:
+          type: string
+          format: date
+        updated_at:
+          type: string
+          format: date-time
+
+    ConsumoRecompensaResponse:
+      type: object
+      properties:
+        consumo:
+          type: object
+          properties:
+            id_consumo:
+              type: integer
+            monto:
+              type: number
+            descripcion:
+              type: string
+            fecha:
+              type: string
+              format: date-time
+        recompensas:
+          type: object
+          properties:
+            millas_generadas:
+              type: integer
+              description: "floor(monto) * 8"
+            puntos_generados:
+              type: integer
+              description: "floor(monto) * 10"
+            cromos_generados:
+              type: integer
+              description: "floor(monto / 10)"
+            detalle_cromos:
+              type: array
+              items:
+                type: object
+                properties:
+                  rareza:
+                    type: string
+                    enum: [comun, raro, epico]
+                  nombre:
+                    type: string
+        perfil_actualizado:
+          type: object
+          properties:
+            millas:
+              type: number
+            puntos:
+              type: integer
+            liga_anterior:
+              type: string
+            liga_actual:
+              type: string
+            cambio_liga:
+              type: boolean
+
+    PaginatedConsumoResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id_consumo:
+                type: integer
+              monto:
+                type: number
+              descripcion:
+                type: string
+              fecha:
+                type: string
+                format: date-time
+              millas_generadas:
+                type: integer
+              puntos_generados:
+                type: integer
+              cromos_generados:
+                type: integer
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    RankingResponse:
+      type: object
+      properties:
+        liga:
+          $ref: '#/components/schemas/Liga'
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              posicion:
+                type: integer
+              username:
+                type: string
+              nombre:
+                type: string
+              puntos:
+                type: integer
+              millas:
+                type: number
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Temporada:
+      type: object
+      description: |
+        **Nota BD**: La tabla `temporada` NO tiene columna `estado`.
+        El campo `estado` es **calculado en tiempo de ejecución** por la API:
+        - `activa`  → fecha_fin >= CURRENT_DATE
+        - `cerrada` → fecha_fin < CURRENT_DATE
+        No persistir `estado` directamente en BD.
+      properties:
+        id_temporada:
+          type: integer
+        nombre:
+          type: string
+        fecha_inicio:
+          type: string
+          format: date
+        fecha_fin:
+          type: string
+          format: date
+        estado:
+          type: string
+          enum: [activa, cerrada]
+          readOnly: true
+          description: "Campo CALCULADO. No existe en BD. Se deriva de fecha_fin vs CURRENT_DATE."
+        created_at:
+          type: string
+          format: date-time
+
+    CierreTemporadaResponse:
+      type: object
+      properties:
+        mensaje:
+          type: string
+        perfiles_procesados:
+          type: integer
+        temporada:
+          $ref: '#/components/schemas/Temporada'
+
+    PartidoResponse:
+      type: object
+      properties:
+        id_partido:
+          type: integer
+        pais_local:
+          type: object
+          properties:
+            id_paises:
+              type: integer
+            nombre:
+              type: string
+        pais_visitante:
+          type: object
+          properties:
+            id_paises:
+              type: integer
+            nombre:
+              type: string
+        fecha:
+          type: string
+          format: date-time
+        goles_local:
+          type: integer
+          nullable: true
+        goles_visitante:
+          type: integer
+          nullable: true
+        ganador:
+          type: string
+          nullable: true
+          enum: [local, visitante, empate]
+        es_futuro:
+          type: boolean
+          description: "true si la fecha es mayor al momento actual"
+        id_temporada:
+          type: integer
+
+    ResultadoPartidoResponse:
+      type: object
+      properties:
+        partido:
+          $ref: '#/components/schemas/PartidoResponse'
+        evaluacion:
+          type: object
+          properties:
+            total_pronosticos:
+              type: integer
+            pronosticos_correctos:
+              type: integer
+            puntos_distribuidos:
+              type: integer
+
+    PronosticoResponse:
+      type: object
+      properties:
+        id_pronosticos:
+          type: integer
+        id_perfil:
+          type: integer
+        partido:
+          $ref: '#/components/schemas/PartidoResponse'
+        score_local:
+          type: integer
+        score_visitante:
+          type: integer
+        ganador:
+          type: string
+          enum: [local, visitante, empate]
+        fecha:
+          type: string
+          format: date-time
+        es_correcto:
+          type: boolean
+          nullable: true
+          description: "null hasta que el partido tenga resultado oficial"
+        mailes_ganados:
+          type: number
+          default: 0
+          description: "Campo BD: pronosticos.mailes_ganados. Se actualiza al evaluar el resultado del partido."
+
+    Cromo:
+      type: object
+      properties:
+        id_cromos:
+          type: integer
+        nombre:
+          type: string
+        frecuencia:
+          type: string
+          enum: [comun, raro, epico]
+        url_imagen:
+          type: string
+          format: uri
+        pais:
+          type: object
+          properties:
+            id_paises:
+              type: integer
+            nombre:
+              type: string
+
+    ColeccionCromosResponse:
+      type: object
+      properties:
+        estadisticas:
+          type: object
+          properties:
+            total_cromos:
+              type: integer
+            comunes:
+              type: integer
+            raros:
+              type: integer
+            epicos:
+              type: integer
+            total_disponibles:
+              type: integer
+            porcentaje_completitud:
+              type: number
+        cromos:
+          type: array
+          items:
+            type: object
+            properties:
+              id_cromos_perfil:
+                type: integer
+              fecha:
+                type: string
+                format: date-time
+              cromo:
+                $ref: '#/components/schemas/Cromo'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CatalogoPremiosResponse:
+      type: object
+      description: |
+        **GAP DE DISEÑO EN BD**: La tabla `premios` actual NO tiene columna `millas_costo`.
+        Para implementar el canje por millas se debe agregar a la BD:
+        ```sql
+        ALTER TABLE public.premios ADD COLUMN millas_costo integer NOT NULL DEFAULT 0 CHECK (millas_costo >= 0);
+        ```
+        Mientras tanto, `millas_costo` se trata como campo requerido del catálogo de premios.
+      properties:
+        categoria_afinidad:
+          type: string
+          description: "Macrocategoría retornada por el modelo ML"
+        liga_usuario:
+          type: string
+        premios:
+          type: array
+          items:
+            type: object
+            properties:
+              id_premios:
+                type: integer
+              nombre:
+                type: string
+              millas_costo:
+                type: integer
+                description: "REQUIERE columna nueva en BD: premios.millas_costo. Costo en millas para canjear."
+              equivalente_usd:
+                type: number
+                description: "millas_costo * 0.01 (1 Milla = $0.01 USD)"
+              tag:
+                type: object
+                properties:
+                  id_tag:
+                    type: integer
+                  descripcion:
+                    type: string
+              liga_minima:
+                type: string
+
+    CanjePremioResponse:
+      type: object
+      description: "Campos del objeto `canje` reflejan exactamente la tabla `premios` de BD."
+      properties:
+        canje:
+          type: object
+          description: "Registro insertado en tabla `premios`."
+          properties:
+            id_premios:
+              type: integer
+            nombre:
+              type: string
+            id_liga:
+              type: integer
+              description: "Liga del perfil al momento del canje (FK → liga.id_liga)"
+            id_tag:
+              type: integer
+              description: "Tag de categoría del premio (FK → tag.id_tag)"
+            id_perfil:
+              type: integer
+              description: "Perfil que realizó el canje (FK → perfil.id_perfil)"
+            otorgado_en:
+              type: string
+              format: date-time
+            created_at:
+              type: string
+              format: date-time
+        millas_descontadas:
+          type: integer
+          description: "Millas descontadas de perfil.millas"
+        millas_restantes:
+          type: number
+          description: "Nuevo saldo de perfil.millas tras el canje"
+
+    TransferenciaResponse:
+      type: object
+      properties:
+        transferencia:
+          type: object
+          properties:
+            id_transferencias:
+              type: integer
+            monto:
+              type: number
+            estado:
+              type: string
+              enum: [Pendiente, Completada, Rechazada]
+            fecha_transferencia:
+              type: string
+              format: date-time
+            mailes_generados:
+              type: number
+              description: "floor(monto) * 8"
+        millas_emisor_actualizadas:
+          type: number
+
+    GrupoResponse:
+      type: object
+      description: |
+        **GAP DE DISEÑO EN BD**: La tabla `grupo` solo registra el perfil CREADOR (campo `id_perfil`).
+        No existe tabla de membresía de grupo. La participación de miembros se rastrea en:
+        - `persona.participo_en_grupo` (boolean)
+        - `persona.rol_en_grupo` (USER-DEFINED enum)
+
+        Para implementar membresía completa se recomienda agregar a la BD:
+        ```sql
+        CREATE TABLE public.grupomiembro (
+          id_grupomiembro serial PRIMARY KEY,
+          id_grupo integer NOT NULL REFERENCES public.grupo(id_grupo),
+          id_perfil integer NOT NULL REFERENCES public.perfil(id_perfil),
+          rol character varying NOT NULL DEFAULT 'miembro',
+          fecha_ingreso timestamp with time zone NOT NULL DEFAULT now(),
+          UNIQUE (id_grupo, id_perfil)
+        );
+        ```
+      properties:
+        id_grupo:
+          type: integer
+        nombre:
+          type: string
+        creador:
+          type: object
+          description: "Mapeado de grupo.id_perfil (FK → perfil)"
+          properties:
+            id_perfil:
+              type: integer
+            username:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+
+    GrupoDetalleResponse:
+      type: object
+      description: |
+        **Nota**: El ranking de miembros se construye via `persona.participo_en_grupo` + `perfil`.
+        Sin tabla de membresía, no es posible saber exactamente qué perfiles pertenecen a un grupo específico.
+        Este endpoint requiere el campo `grupomiembro` propuesto en `GrupoResponse`.
+      properties:
+        grupo:
+          $ref: '#/components/schemas/GrupoResponse'
+        ranking_miembros:
+          type: array
+          items:
+            type: object
+            properties:
+              posicion:
+                type: integer
+              username:
+                type: string
+              puntos:
+                type: integer
+              millas:
+                type: number
+              rol:
+                type: string
+                description: "persona.rol_en_grupo"
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
