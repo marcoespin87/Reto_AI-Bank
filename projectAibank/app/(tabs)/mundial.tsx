@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, Alert, TextInput,
+  StyleSheet, SafeAreaView, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
+import ChatbotModal from '../../components/ChatbotModal';
 
 // ─── DATOS DEL PARTIDO (dinámico — cambia aquí para otro partido) ───────────
 const PARTIDO = {
@@ -61,15 +62,7 @@ export default function MundialScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [rachaActiva, setRachaActiva] = useState(false);
   const [mostrarPrediccion, setMostrarPrediccion] = useState(false);
-
-  // Chatbot
-  const [chatMessages, setChatMessages] = useState<{ role: 'bot' | 'user'; text: string }[]>([
-    { role: 'bot', text: '¡Hola! Soy tu AI Coach ⚽. Pregúntame sobre el partido Ecuador vs Costa de Marfil y te ayudo con tu predicción.' },
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatThreadId, setChatThreadId] = useState<string | null>(null);
-  const chatRef = useRef<ScrollView>(null);
+  const [chatbotVisible, setChatbotVisible] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -160,33 +153,6 @@ export default function MundialScreen() {
       );
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function sendChatMessage() {
-    if (!chatInput.trim() || chatLoading) return;
-    const userMsg = chatInput.trim();
-    setChatInput('');
-    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setChatLoading(true);
-    try {
-      const res = await fetch('http://localhost:8001/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userMsg, thread_id: chatThreadId }),
-      });
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      const data = await res.json();
-      if (data.thread_id && !chatThreadId) setChatThreadId(data.thread_id);
-      setChatMessages(prev => [...prev, { role: 'bot', text: data.response }]);
-    } catch {
-      setChatMessages(prev => [
-        ...prev,
-        { role: 'bot', text: '⚠️ No pude conectarme al AI Coach. Verifica que el servidor esté corriendo.' },
-      ]);
-    } finally {
-      setChatLoading(false);
-      chatRef.current?.scrollToEnd({ animated: true });
     }
   }
 
@@ -348,64 +314,6 @@ export default function MundialScreen() {
             </View>
           </View>
 
-          {/* ── Chatbot AI Coach ── */}
-          <View style={s.chatSection}>
-            <View style={s.chatHeader}>
-              <Text style={s.chatHeaderIcon}>🤖</Text>
-              <View>
-                <Text style={s.chatTitle}>AI Coach</Text>
-                <Text style={s.chatSub}>Próximamente disponible</Text>
-              </View>
-              <View style={s.chatComingSoon}>
-                <Text style={s.chatComingSoonText}>Beta</Text>
-              </View>
-            </View>
-
-            <ScrollView
-              ref={chatRef}
-              style={s.chatMessages}
-              showsVerticalScrollIndicator={false}
-              onContentSizeChange={() => chatRef.current?.scrollToEnd({ animated: true })}
-            >
-              {chatMessages.map((msg, i) => (
-                <View
-                  key={i}
-                  style={[
-                    s.chatBubble,
-                    msg.role === 'user' ? s.chatBubbleUser : s.chatBubbleBot,
-                  ]}
-                >
-                  <Text style={msg.role === 'user' ? s.chatTextUser : s.chatTextBot}>
-                    {msg.text}
-                  </Text>
-                </View>
-              ))}
-              {chatLoading && (
-                <View style={[s.chatBubble, s.chatBubbleBot]}>
-                  <ActivityIndicator size="small" color="#b2c5ff" />
-                </View>
-              )}
-            </ScrollView>
-
-            <View style={s.chatInputRow}>
-              <TextInput
-                style={s.chatInput}
-                placeholder="Pregunta al AI Coach..."
-                placeholderTextColor="#424655"
-                value={chatInput}
-                onChangeText={setChatInput}
-                onSubmitEditing={sendChatMessage}
-                returnKeyType="send"
-              />
-              <TouchableOpacity style={[s.chatSendBtn, chatLoading && { opacity: 0.5 }]} onPress={sendChatMessage} disabled={chatLoading}>
-                {chatLoading
-                  ? <ActivityIndicator size="small" color="#0d0f1a" />
-                  : <Text style={s.chatSendIcon}>↑</Text>
-                }
-              </TouchableOpacity>
-            </View>
-          </View>
-
           {/* Espacio para sticky bottom */}
           <View style={{ height: 260 }} />
         </ScrollView>
@@ -506,6 +414,15 @@ export default function MundialScreen() {
         </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* ── FAB Chatbot ── */}
+      {!mostrarPrediccion && (
+        <TouchableOpacity style={s.chatFab} onPress={() => setChatbotVisible(true)}>
+          <Text style={s.chatFabIcon}>🤖</Text>
+        </TouchableOpacity>
+      )}
+
+      <ChatbotModal visible={chatbotVisible} onClose={() => setChatbotVisible(false)} />
 
       {/* ── Bottom Nav ── */}
       <View style={s.bottomNav}>
@@ -624,31 +541,25 @@ const s = StyleSheet.create({
   h2hLabels: { flexDirection: 'row', justifyContent: 'space-between' },
   h2hLabel: { color: '#b2c5ff', fontSize: 10, fontWeight: '600' },
 
-  // Chatbot
-  chatSection: {
-    backgroundColor: '#101c2e', borderRadius: 20, padding: 16,
-    marginBottom: 12, borderWidth: 0.5, borderColor: '#1f2a3d',
+  // FAB Chatbot
+  chatFab: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#1a2740',
+    borderWidth: 1.5,
+    borderColor: '#b2c5ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#b2c5ff',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  chatHeaderIcon: { fontSize: 24 },
-  chatTitle: { color: '#d7e3fc', fontSize: 15, fontWeight: '800' },
-  chatSub: { color: '#8c90a1', fontSize: 10 },
-  chatComingSoon: { marginLeft: 'auto', backgroundColor: 'rgba(178,197,255,0.1)', borderWidth: 1, borderColor: 'rgba(178,197,255,0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  chatComingSoonText: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
-  chatMessages: { maxHeight: 160, marginBottom: 10 },
-  chatBubble: { borderRadius: 12, padding: 10, marginBottom: 6, maxWidth: '85%' },
-  chatBubbleBot: { backgroundColor: '#1f2a3d', alignSelf: 'flex-start' },
-  chatBubbleUser: { backgroundColor: '#b2c5ff', alignSelf: 'flex-end' },
-  chatTextBot: { color: '#d7e3fc', fontSize: 12, lineHeight: 18 },
-  chatTextUser: { color: '#002b73', fontSize: 12, fontWeight: '600' },
-  chatInputRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  chatInput: {
-    flex: 1, backgroundColor: '#1f2a3d', borderRadius: 12, paddingHorizontal: 14,
-    paddingVertical: 10, color: '#d7e3fc', fontSize: 13,
-    borderWidth: 0.5, borderColor: '#424655',
-  },
-  chatSendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#b2c5ff', alignItems: 'center', justifyContent: 'center' },
-  chatSendIcon: { color: '#002b73', fontSize: 18, fontWeight: '800' },
+  chatFabIcon: { fontSize: 24 },
 
   // Sticky Bottom
   stickyBottom: {
