@@ -64,9 +64,11 @@ export default function MundialScreen() {
 
   // Chatbot
   const [chatMessages, setChatMessages] = useState<{ role: 'bot' | 'user'; text: string }[]>([
-    { role: 'bot', text: '¡Hola! Soy tu AI Coach ⚽. Pronto podré analizar el partido y darte recomendaciones para tu predicción.' },
+    { role: 'bot', text: '¡Hola! Soy tu AI Coach ⚽. Pregúntame sobre el partido Ecuador vs Costa de Marfil y te ayudo con tu predicción.' },
   ]);
   const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatThreadId, setChatThreadId] = useState<string | null>(null);
   const chatRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -161,18 +163,31 @@ export default function MundialScreen() {
     }
   }
 
-  function sendChatMessage() {
-    if (!chatInput.trim()) return;
+  async function sendChatMessage() {
+    if (!chatInput.trim() || chatLoading) return;
     const userMsg = chatInput.trim();
     setChatInput('');
     setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setTimeout(() => {
+    setChatLoading(true);
+    try {
+      const res = await fetch('http://localhost:8001/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userMsg, thread_id: chatThreadId }),
+      });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const data = await res.json();
+      if (data.thread_id && !chatThreadId) setChatThreadId(data.thread_id);
+      setChatMessages(prev => [...prev, { role: 'bot', text: data.response }]);
+    } catch {
       setChatMessages(prev => [
         ...prev,
-        { role: 'bot', text: '🔧 El AI Coach estará disponible próximamente. ¡Estamos integrándolo!' },
+        { role: 'bot', text: '⚠️ No pude conectarme al AI Coach. Verifica que el servidor esté corriendo.' },
       ]);
+    } finally {
+      setChatLoading(false);
       chatRef.current?.scrollToEnd({ animated: true });
-    }, 600);
+    }
   }
 
   const totalRecompensa = PARTIDO.recompensas.marcadorExacto + (rachaActiva ? PARTIDO.recompensas.rachaBono : 0);
@@ -365,6 +380,11 @@ export default function MundialScreen() {
                   </Text>
                 </View>
               ))}
+              {chatLoading && (
+                <View style={[s.chatBubble, s.chatBubbleBot]}>
+                  <ActivityIndicator size="small" color="#b2c5ff" />
+                </View>
+              )}
             </ScrollView>
 
             <View style={s.chatInputRow}>
@@ -377,8 +397,11 @@ export default function MundialScreen() {
                 onSubmitEditing={sendChatMessage}
                 returnKeyType="send"
               />
-              <TouchableOpacity style={s.chatSendBtn} onPress={sendChatMessage}>
-                <Text style={s.chatSendIcon}>↑</Text>
+              <TouchableOpacity style={[s.chatSendBtn, chatLoading && { opacity: 0.5 }]} onPress={sendChatMessage} disabled={chatLoading}>
+                {chatLoading
+                  ? <ActivityIndicator size="small" color="#0d0f1a" />
+                  : <Text style={s.chatSendIcon}>↑</Text>
+                }
               </TouchableOpacity>
             </View>
           </View>
