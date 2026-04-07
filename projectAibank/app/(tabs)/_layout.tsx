@@ -10,6 +10,7 @@ export default function TabLayout() {
       <Tabs.Screen name="grupo" />
       <Tabs.Screen name="album" />
       <Tabs.Screen name="mundial" />
+      <Tabs.Screen name="premios" />
     </Tabs>
   );
 }

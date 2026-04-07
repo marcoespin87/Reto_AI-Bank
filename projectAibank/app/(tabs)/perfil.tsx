@@ -234,6 +234,20 @@ async function handleLogout() {
           </View>
         )}
 
+        {/* Premio personalizado */}
+        <TouchableOpacity style={s.sectionCard} onPress={() => router.push('/(tabs)/premios')}>
+          <View style={s.prizeRow}>
+            <View style={s.prizeRowLeft}>
+              <Text style={{ fontSize: 28 }}>🏆</Text>
+              <View>
+                <Text style={s.prizeRowTitle}>Mi Premio de Temporada</Text>
+                <Text style={s.prizeRowSub}>Descubre tu recompensa personalizada</Text>
+              </View>
+            </View>
+            <Text style={s.chevron}>›</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Settings */}
         <View style={s.sectionCard}>
           {[
@@ -349,6 +363,11 @@ const s = StyleSheet.create({
   benefitItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   benefitCheck: { color: '#ffd65b', fontSize: 14, fontWeight: '700', marginTop: 1 },
   benefitText: { color: '#c2c6d8', fontSize: 13, flex: 1 },
+
+  prizeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  prizeRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  prizeRowTitle: { color: '#ffd65b', fontSize: 15, fontWeight: '700' },
+  prizeRowSub: { color: '#8c90a1', fontSize: 12, marginTop: 2 },
 
   settingItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#1f2a3d' },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
