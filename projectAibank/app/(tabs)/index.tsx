@@ -1,113 +1,129 @@
-import { useState, useEffect } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, Alert, RefreshControl, Image
-} from 'react-native';
-import { supabase } from '../../lib/supabase';
-import { router } from 'expo-router';
-import * as Clipboard from 'expo-clipboard';
-
+  Alert,
+  Image,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import BottomNav from "../../components/BottomNav";
+import { useTheme } from "../../context/ThemeContext";
+import { supabase } from "../../lib/supabase";
 
 export default function HomeScreen() {
-  const [userName, setUserName] = useState('');
+  const { colors } = useTheme();
+  const [userName, setUserName] = useState("");
   const [mailes, setMailes] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [saldo, setSaldo] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const DOLARES_POR_CROMO = 20;
   const [misStickersRecientes, setMisStickersRecientes] = useState<any[]>([]);
-  const [numeroCuenta, setNumeroCuenta] = useState('');
+  const [numeroCuenta, setNumeroCuenta] = useState("");
 
   useEffect(() => {
     loadUserData();
   }, []);
 
-async function loadUserData() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  async function loadUserData() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-  const { data } = await supabase
-    .from('users')
-    .select('id, nombre, mailes_acumulados, saldo, numero_cuenta')
-    .eq('email', user.email)
-    .single();
+    const { data } = await supabase
+      .from("users")
+      .select("id, nombre, mailes_acumulados, saldo, numero_cuenta")
+      .eq("email", user.email)
+      .single();
 
-if (data) {
-    setUserName(data.nombre?.split(' ')[0] || 'Usuario');
-    setMailes(data.mailes_acumulados || 0);
-    setSaldo(data.saldo || 0);
-    setNumeroCuenta(data.numero_cuenta || '');
+    if (data) {
+      setUserName(data.nombre?.split(" ")[0] || "Usuario");
+      setMailes(data.mailes_acumulados || 0);
+      setSaldo(data.saldo || 0);
+      setNumeroCuenta(data.numero_cuenta || "");
 
-    const { data: txs } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', data.id)
-      .order('fecha', { ascending: false })
-      .limit(3);
+      const { data: txs } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", data.id)
+        .order("fecha", { ascending: false })
+        .limit(3);
 
-    if (txs) setTransactions(txs);
+      if (txs) setTransactions(txs);
 
-    const { data: stickersRecientes } = await supabase
-      .from('user_stickers')
-      .select('*, stickers(*)')
-      .eq('user_id', data.id)
-      .order('fecha_obtencion', { ascending: false })
-      .limit(3);
+      const { data: stickersRecientes } = await supabase
+        .from("user_stickers")
+        .select("*, stickers(*)")
+        .eq("user_id", data.id)
+        .order("fecha_obtencion", { ascending: false })
+        .limit(3);
 
-    if (stickersRecientes) setMisStickersRecientes(stickersRecientes);
+      if (stickersRecientes) setMisStickersRecientes(stickersRecientes);
+    }
   }
-}
 
-async function handleCopiarCuenta() {
-  if (!numeroCuenta) return;
-  await Clipboard.setStringAsync(numeroCuenta);
-  Alert.alert('Copiado', 'Número de cuenta copiado al portapapeles');
-}
+  async function handleCopiarCuenta() {
+    if (!numeroCuenta) return;
+    await Clipboard.setStringAsync(numeroCuenta);
+    Alert.alert("Copiado", "Número de cuenta copiado al portapapeles");
+  }
 
-function formatNumeroCuenta(num: string) {
-  if (!num) return '•••• •••• •••• ••••';
-  return num.replace(/(.{4})/g, '$1 ').trim();
-}
+  function formatNumeroCuenta(num: string) {
+    if (!num) return "•••• •••• •••• ••••";
+    return num.replace(/(.{4})/g, "$1 ").trim();
+  }
 
-async function onRefresh() {
-  setRefreshing(true);
-  await loadUserData();
-  setRefreshing(false);
-}
+  async function onRefresh() {
+    setRefreshing(true);
+    await loadUserData();
+    setRefreshing(false);
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.replace('/(auth)/login');
+    router.replace("/(auth)/login");
   }
 
   const categoryIcon: Record<string, string> = {
-    supermercado: '🛒',
-    cafe: '☕',
-    entretenimiento: '🎭',
-    transporte: '🚗',
-    viajes: '✈️',
-    default: '💳',
+    supermercado: "🛒",
+    cafe: "☕",
+    entretenimiento: "🎭",
+    transporte: "🚗",
+    viajes: "✈️",
+    default: "💳",
   };
+
+  const s = getStyles(colors);
 
   return (
     <SafeAreaView style={s.root}>
-<ScrollView
-  showsVerticalScrollIndicator={false}
-  contentContainerStyle={s.scroll}
-  refreshControl={
-    <RefreshControl
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      tintColor="#b2c5ff"
-      colors={['#b2c5ff']}
-    />
-  }
->
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
         {/* Header */}
         <View style={s.header}>
           <View style={s.headerLeft}>
             <View style={s.avatar}>
-              <Text style={s.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
+              <Text style={s.avatarText}>
+                {userName.charAt(0).toUpperCase()}
+              </Text>
             </View>
             <View>
               <Text style={s.greeting}>Hola, {userName}</Text>
@@ -115,13 +131,20 @@ async function onRefresh() {
             </View>
           </View>
           <TouchableOpacity style={s.leagueBadge}>
+            <Ionicons
+              name="trophy-outline"
+              size={11}
+              color={colors.primary}
+              style={{ marginRight: 4 }}
+            />
             <Text style={s.leagueBadgeText}>Liga Plata • Medalla 3</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Bank Card */}
+        {/* Bank Card — premium */}
         <View style={s.card}>
           <View style={s.cardPatternCircle} />
+          <View style={s.cardPatternCircle2} />
           <View style={s.cardPatternLine} />
           <View style={s.cardTop}>
             <Text style={s.cardType}>AI-Bank Débito</Text>
@@ -129,12 +152,20 @@ async function onRefresh() {
           </View>
           <View style={s.cardMid}>
             <Text style={s.cardBalanceLabel}>Saldo disponible</Text>
-            <Text style={s.cardBalance}>${saldo.toLocaleString('es', { minimumFractionDigits: 2 })}</Text>
+            <Text style={s.cardBalance}>
+              ${saldo.toLocaleString("es", { minimumFractionDigits: 2 })}
+            </Text>
           </View>
           <View style={s.cardBottom}>
-            <TouchableOpacity onPress={handleCopiarCuenta} activeOpacity={0.7}>
-              <Text style={s.cardNumber}>{formatNumeroCuenta(numeroCuenta)}</Text>
-              <Text style={{ color: 'rgba(0,43,115,0.5)', fontSize: 9, marginTop: 2 }}> </Text>
+            <TouchableOpacity
+              onPress={handleCopiarCuenta}
+              activeOpacity={0.7}
+              style={s.cardNumberWrap}
+            >
+              <Text style={s.cardNumber}>
+                {formatNumeroCuenta(numeroCuenta)}
+              </Text>
+              <Text style={s.cardCopyHint}>Toca para copiar 📋</Text>
             </TouchableOpacity>
             <View style={s.cardChip}>
               <View style={s.chipCircle1} />
@@ -152,17 +183,23 @@ async function onRefresh() {
               </View>
               <View>
                 <Text style={s.mailesLabel}>Tu Progreso</Text>
-                <Text style={s.mailesValue}>{mailes.toLocaleString()} mAiles</Text>
+                <Text style={s.mailesValue}>
+                  {mailes.toLocaleString()} mAiles
+                </Text>
               </View>
             </View>
-            <Text style={s.medalText}>Medalla 3</Text>
+            <View style={s.medalBadge}>
+              <Text style={s.medalText}>🥇 Medalla 3</Text>
+            </View>
           </View>
           <View style={s.progressRow}>
-            <Text style={s.progressLabel}>12 compras para tu próxima estrella</Text>
+            <Text style={s.progressLabel}>
+              12 compras para tu próxima estrella
+            </Text>
             <Text style={s.starsText}>★★★☆☆</Text>
           </View>
           <View style={s.progressBar}>
-            <View style={[s.progressFill, { width: '60%' }]} />
+            <View style={[s.progressFill, { width: "60%" }]} />
           </View>
         </View>
 
@@ -180,7 +217,7 @@ async function onRefresh() {
             </View>
           </View>
           <View style={s.progressBar}>
-            <View style={[s.progressFillGold, { width: '66%' }]} />
+            <View style={[s.progressFillGold, { width: "66%" }]} />
           </View>
           <Text style={s.nextStar}>⭐ próxima estrella en 4 compras más</Text>
         </View>
@@ -188,214 +225,498 @@ async function onRefresh() {
         {/* Cromos Recientes */}
         <View style={s.transHeader}>
           <Text style={s.sectionTitle}>Cromos recientes</Text>
-          <TouchableOpacity onPress={() => router.replace('/(tabs)/album')}>
+          <TouchableOpacity onPress={() => router.replace("/(tabs)/album")}>
             <Text style={s.seeAll}>Ver álbum →</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: 16 }}
+        >
           {misStickersRecientes.length === 0 ? (
             <View style={s.emptyCromos}>
-              <Text style={s.emptyCromosText}>🃏 Gasta ${DOLARES_POR_CROMO} para obtener tu primer cromo</Text>
+              <Text style={s.emptyCromosText}>
+                🃏 Gasta ${DOLARES_POR_CROMO} para obtener tu primer cromo
+              </Text>
             </View>
           ) : (
-            misStickersRecientes.slice(0, 3).map((us: any, i: number) => (
-              <TouchableOpacity
-                key={i}
-                style={s.cromoCard}
-                onPress={() => router.replace('/(tabs)/album')}
-              >
-                <Image
-                  source={{ uri: us.stickers?.imagen_url }}
-                  style={s.cromoImage}
-                />
-                <View style={[s.cromoBadge, {
-                  backgroundColor: us.stickers?.rareza === 'epico' ? 'rgba(240,193,16,0.8)' :
-                    us.stickers?.rareza === 'raro' ? 'rgba(91,140,255,0.8)' : 'rgba(66,70,85,0.8)'
-                }]}>
-                  <Text style={s.cromoBadgeText}>
-                    {us.stickers?.rareza === 'epico' ? 'ÉPICO' : us.stickers?.rareza === 'raro' ? 'RARO' : 'COMÚN'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))
+            misStickersRecientes.slice(0, 3).map((us: any) => {
+              const rareza = us.stickers?.rareza;
+              const borderColor =
+                rareza === "epico"
+                  ? colors.rarityEpicBorder
+                  : rareza === "raro"
+                    ? colors.rarityRareBorder
+                    : colors.rarityCommonBorder;
+              const badgeBg =
+                rareza === "epico"
+                  ? colors.rarityEpicBg
+                  : rareza === "raro"
+                    ? colors.rarityRareBg
+                    : colors.rarityCommonBg;
+              const badgeText =
+                rareza === "epico"
+                  ? "ÉPICO"
+                  : rareza === "raro"
+                    ? "RARO"
+                    : "COMÚN";
+              const badgeColor =
+                rareza === "epico"
+                  ? colors.rarityEpicText
+                  : rareza === "raro"
+                    ? colors.rarityRareText
+                    : colors.rarityCommonText;
+              return (
+                <TouchableOpacity
+                  key={`cromo-${us.id ?? us.stickers?.id}`}
+                  style={[s.cromoCard, { borderColor }]}
+                  onPress={() => router.replace("/(tabs)/album")}
+                >
+                  <Image
+                    source={{ uri: us.stickers?.imagen_url }}
+                    style={s.cromoImage}
+                  />
+                  <View style={[s.cromoBadge, { backgroundColor: badgeBg }]}>
+                    <Text style={[s.cromoBadgeText, { color: badgeColor }]}>
+                      {badgeText}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           )}
         </ScrollView>
 
         {/* Recent Transactions */}
         <View style={s.transHeader}>
           <Text style={s.sectionTitle}>Movimientos recientes</Text>
-          <TouchableOpacity onPress={() => router.replace('/(tabs)/banco')}>
+          <TouchableOpacity onPress={() => router.replace("/(tabs)/banco")}>
             <Text style={s.seeAll}>Ver todo</Text>
           </TouchableOpacity>
         </View>
 
-        {transactions.length > 0 ? (
-        transactions.map((tx) => (
-          <View key={tx.id} style={s.txItem}>
-            <View style={s.txIconWrap}>
-              <Text style={s.txIcon}>
-                {categoryIcon[tx.categoria?.toLowerCase()] || categoryIcon.default}
-              </Text>
-            </View>
-            <View style={s.txInfo}>
-              <Text style={s.txName}>{tx.categoria}</Text>
-              <Text style={s.txDate}>{tx.fecha}</Text>
-            </View>
-            <View style={s.txRight}>
-              <Text style={s.txAmount}>-${Number(tx.monto).toFixed(2)}</Text>
-              {tx.mailes_generados > 0 && (
-                <Text style={s.txMailes}>+{tx.mailes_generados} mAiles</Text>
-              )}
-            </View>
-          </View>
-        ))
-      ) : (
-        <>
-          {[
-            { name: 'Supermercado Premium', time: 'Hace 2 horas', amount: '$45.00', mailes: '+18 mAiles', icon: '🛒' },
-            { name: 'Star Stadium Coffee', time: 'Ayer, 09:15 AM', amount: '$8.50', mailes: '+2 mAiles', icon: '☕' },
-            { name: 'Entradas Final Mundial', time: '12 Jun', amount: '$1,200.00', mailes: '+500 mAiles', icon: '⚽' },
-          ].map((item, i) => (
-            <View key={i} style={s.txItem}>
-              <View style={s.txIconWrap}>
-                <Text style={s.txIcon}>{item.icon}</Text>
+        {/* Renderizado estable de transacciones - contenedor fijo */}
+        <View>
+          {transactions.length > 0 ? (
+            transactions.map((tx) => (
+              <View key={`tx-${tx.id}`} style={s.txItem}>
+                <View style={s.txIconWrap}>
+                  <Text style={s.txIcon}>
+                    {categoryIcon[tx.categoria?.toLowerCase()] ||
+                      categoryIcon.default}
+                  </Text>
+                </View>
+                <View style={s.txInfo}>
+                  <Text style={s.txName}>{tx.categoria}</Text>
+                  <Text style={s.txDate}>{tx.fecha}</Text>
+                </View>
+                <View style={s.txRight}>
+                  <Text style={s.txAmount}>
+                    -${Number(tx.monto).toFixed(2)}
+                  </Text>
+                  {tx.mailes_generados > 0 && (
+                    <Text style={s.txMailes}>
+                      +{tx.mailes_generados} mAiles
+                    </Text>
+                  )}
+                </View>
               </View>
-              <View style={s.txInfo}>
-                <Text style={s.txName}>{item.name}</Text>
-                <Text style={s.txDate}>{item.time}</Text>
-              </View>
-              <View style={s.txRight}>
-                <Text style={s.txAmount}>{item.amount}</Text>
-                <Text style={s.txMailes}>{item.mailes}</Text>
-              </View>
-            </View>
-          ))}
-        </>
-      )}
+            ))
+          ) : (
+            <>
+              {[
+                {
+                  id: "default-1",
+                  name: "Supermercado Premium",
+                  time: "Hace 2 horas",
+                  amount: "$45.00",
+                  mailes: "+18 mAiles",
+                  icon: "🛒",
+                },
+                {
+                  id: "default-2",
+                  name: "Star Stadium Coffee",
+                  time: "Ayer, 09:15 AM",
+                  amount: "$8.50",
+                  mailes: "+2 mAiles",
+                  icon: "☕",
+                },
+                {
+                  id: "default-3",
+                  name: "Entradas Final Mundial",
+                  time: "12 Jun",
+                  amount: "$1,200.00",
+                  mailes: "+500 mAiles",
+                  icon: "⚽",
+                },
+              ].map((item) => (
+                <View key={`tx-default-${item.id}`} style={s.txItem}>
+                  <View style={s.txIconWrap}>
+                    <Text style={s.txIcon}>{item.icon}</Text>
+                  </View>
+                  <View style={s.txInfo}>
+                    <Text style={s.txName}>{item.name}</Text>
+                    <Text style={s.txDate}>{item.time}</Text>
+                  </View>
+                  <View style={s.txRight}>
+                    <Text style={s.txAmount}>{item.amount}</Text>
+                    <Text style={s.txMailes}>{item.mailes}</Text>
+                  </View>
+                </View>
+              ))}
+            </>
+          )}
+        </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Bottom Nav */}
-      <View style={s.bottomNav}>
-        <TouchableOpacity style={s.navItem}>
-          <Text style={s.navIconActive}>🏠</Text>
-          <Text style={s.navLabelActive}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/banco')}>
-          <Text style={s.navIcon}>🏦</Text>
-          <Text style={s.navLabel}>Banco</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navCenter} onPress={() => router.push('/(tabs)/mundial')}>
-          <View style={s.navCenterBtn}>
-            <Text style={s.navCenterIcon}>⚽</Text>
-          </View>
-          <Text style={s.navCenterLabel}>Mundial</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/grupo')}>
-          <Text style={s.navIcon}>👥</Text>
-          <Text style={s.navLabel}>Grupo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/perfil')}>
-          <Text style={s.navIcon}>👤</Text>
-          <Text style={s.navLabel}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNav active="home" />
     </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#071325' },
-  scroll: { paddingHorizontal: 20 },
+function getStyles(
+  colors: ReturnType<
+    typeof import("../../context/ThemeContext").useTheme
+  >["colors"],
+) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.background },
+    scroll: { paddingHorizontal: 20 },
 
-  // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#1f2a3d', borderWidth: 2, borderColor: '#b2c5ff', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#b2c5ff', fontWeight: '800', fontSize: 16 },
-  greeting: { color: '#b2c5ff', fontSize: 18, fontWeight: '800' },
-  subGreeting: { color: '#424655', fontSize: 9, fontWeight: '600', letterSpacing: 1.5 },
-  leagueBadge: { backgroundColor: '#1f2a3d', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5, borderColor: '#424655' },
-  leagueBadgeText: { color: '#b2c5ff', fontSize: 10, fontWeight: '700' },
+    // Header
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 16,
+    },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 2,
+      borderColor: colors.gold,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarText: { color: colors.gold, fontWeight: "800", fontSize: 17 },
+    greeting: { color: colors.primary, fontSize: 18, fontWeight: "800" },
+    subGreeting: {
+      color: colors.textMuted,
+      fontSize: 9,
+      fontWeight: "600",
+      letterSpacing: 1.5,
+    },
+    leagueBadge: {
+      backgroundColor: colors.cardBackground,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 0.5,
+      borderColor: colors.borderStrong,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    leagueBadgeText: { color: colors.primary, fontSize: 10, fontWeight: "700" },
 
-  // Bank Card
-  card: { backgroundColor: '#b2c5ff', borderRadius: 24, padding: 24, marginBottom: 16, overflow: 'hidden', position: 'relative', aspectRatio: 1.6 },
-  cardPatternCircle: { position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.1)' },
-  cardPatternLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, backgroundColor: 'rgba(0,0,0,0.05)' },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  cardType: { color: '#002b73', fontSize: 12, fontWeight: '700' },
-  cardBrand: { color: '#002b73', fontSize: 22, fontWeight: '900', fontStyle: 'italic' },
-  cardMid: { marginBottom: 16 },
-  cardBalanceLabel: { color: 'rgba(0,43,115,0.6)', fontSize: 11, fontWeight: '500' },
-  cardBalance: { color: '#002b73', fontSize: 36, fontWeight: '800', letterSpacing: -1 },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardNumber: { color: '#002b73', fontFamily: 'monospace', fontSize: 13, letterSpacing: 3 },
-  cardChip: { flexDirection: 'row' },
-  chipCircle1: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,214,91,0.8)', marginRight: -8 },
-  chipCircle2: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,181,157,0.8)' },
-  cardActions: { flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 0.5, borderTopColor: 'rgba(0,43,115,0.2)', paddingTop: 16 },
-  cardAction: { alignItems: 'center', gap: 4 },
-  cardActionIcon: { fontSize: 20, color: '#002b73' },
-  cardActionLabel: { color: '#002b73', fontSize: 11, fontWeight: '700' },
+    // Bank Card — premium gradient effect via layered views
+    card: {
+      backgroundColor: colors.primary,
+      borderRadius: 24,
+      padding: 24,
+      marginBottom: 16,
+      overflow: "hidden",
+      position: "relative",
+      aspectRatio: 1.6,
+      shadowColor: colors.shadowColorBlue,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 1,
+      shadowRadius: 20,
+      elevation: 10,
+    },
+    cardPatternCircle: {
+      position: "absolute",
+      top: -50,
+      right: -50,
+      width: 180,
+      height: 180,
+      borderRadius: 90,
+      backgroundColor: "rgba(255,255,255,0.12)",
+    },
+    cardPatternCircle2: {
+      position: "absolute",
+      bottom: -30,
+      left: -30,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: "rgba(255,214,91,0.15)",
+    },
+    cardPatternLine: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 70,
+      backgroundColor: "rgba(0,0,0,0.06)",
+    },
+    cardTop: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    cardType: {
+      color: "#002b73",
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 0.5,
+    },
+    cardBrand: {
+      color: "#002b73",
+      fontSize: 22,
+      fontWeight: "900",
+      fontStyle: "italic",
+    },
+    cardMid: { marginBottom: 16 },
+    cardBalanceLabel: {
+      color: "rgba(0,43,115,0.65)",
+      fontSize: 11,
+      fontWeight: "500",
+      marginBottom: 2,
+    },
+    cardBalance: {
+      color: "#002b73",
+      fontSize: 36,
+      fontWeight: "800",
+      letterSpacing: -1,
+      textShadowColor: "rgba(0,43,115,0.15)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
+    },
+    cardBottom: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    cardNumberWrap: {},
+    cardNumber: {
+      color: "#002b73",
+      fontFamily: "monospace",
+      fontSize: 13,
+      letterSpacing: 3,
+      fontWeight: "600",
+    },
+    cardCopyHint: { color: "rgba(0,43,115,0.45)", fontSize: 9, marginTop: 2 },
+    cardChip: { flexDirection: "row" },
+    chipCircle1: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: "rgba(255,214,91,0.85)",
+      marginRight: -9,
+    },
+    chipCircle2: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: "rgba(255,181,157,0.85)",
+    },
 
-  // mAiles
-  section: { backgroundColor: '#101c2e', borderRadius: 20, padding: 18, marginBottom: 12, borderWidth: 0.5, borderColor: '#1f2a3d' },
-  mailesRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  mailesLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  mailesIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,214,91,0.1)', alignItems: 'center', justifyContent: 'center' },
-  mailesIcon: { fontSize: 20 },
-  mailesLabel: { color: '#8c90a1', fontSize: 10, fontWeight: '500', textTransform: 'uppercase' },
-  mailesValue: { color: '#ffd65b', fontSize: 20, fontWeight: '800' },
-  medalText: { color: '#ffd65b', fontSize: 12, fontWeight: '700' },
-  progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  progressLabel: { color: '#8c90a1', fontSize: 11 },
-  starsText: { color: '#ffd65b', fontSize: 12 },
-  progressBar: { height: 8, backgroundColor: '#1f2a3d', borderRadius: 4, overflow: 'hidden', marginBottom: 4 },
-  progressFill: { height: '100%', backgroundColor: '#b2c5ff', borderRadius: 4 },
-  progressFillGold: { height: '100%', backgroundColor: '#ffd65b', borderRadius: 4 },
+    // mAiles
+    section: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 20,
+      padding: 18,
+      marginBottom: 12,
+      borderWidth: 0.5,
+      borderColor: colors.borderMedium,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    mailesRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    mailesLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+    mailesIconWrap: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.goldDim,
+      borderWidth: 1,
+      borderColor: colors.goldBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    mailesIcon: { fontSize: 20 },
+    mailesLabel: {
+      color: colors.textSecondary,
+      fontSize: 10,
+      fontWeight: "600",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    mailesValue: {
+      color: colors.gold,
+      fontSize: 22,
+      fontWeight: "800",
+      textShadowColor: colors.goldShadow,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
+    },
+    medalBadge: {
+      backgroundColor: colors.goldDim,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.goldBorder,
+    },
+    medalText: { color: colors.gold, fontSize: 11, fontWeight: "700" },
+    progressRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    progressLabel: { color: colors.textSecondary, fontSize: 11 },
+    starsText: { color: colors.gold, fontSize: 12 },
+    progressBar: {
+      height: 8,
+      backgroundColor: colors.borderMedium,
+      borderRadius: 4,
+      overflow: "hidden",
+      marginBottom: 4,
+    },
+    progressFill: {
+      height: "100%",
+      backgroundColor: colors.primary,
+      borderRadius: 4,
+    },
+    progressFillGold: {
+      height: "100%",
+      backgroundColor: colors.gold,
+      borderRadius: 4,
+    },
 
-  // Weekly
-  weeklyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  sectionSubtitle: { color: '#8c90a1', fontSize: 11, fontWeight: '500' },
-  weeklyText: { color: '#d7e3fc', fontSize: 16, fontWeight: '700', marginTop: 2 },
-  weeklyAmount: { color: '#b2c5ff' },
-  mailesBadge: { backgroundColor: 'rgba(255,214,91,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-  mailesBadgeText: { color: '#ffd65b', fontSize: 11, fontWeight: '700' },
-  nextStar: { color: '#ffd65b', fontSize: 10, marginTop: 6 },
+    // Weekly
+    weeklyRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 12,
+    },
+    sectionSubtitle: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: "500",
+    },
+    weeklyText: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: "700",
+      marginTop: 2,
+    },
+    weeklyAmount: { color: colors.primary },
+    mailesBadge: {
+      backgroundColor: colors.goldDim,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.goldBorder,
+    },
+    mailesBadgeText: { color: colors.gold, fontSize: 11, fontWeight: "700" },
+    nextStar: { color: colors.gold, fontSize: 10, marginTop: 6 },
 
-  // Transactions
-  transHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 4 },
-  sectionTitle: { color: '#d7e3fc', fontSize: 18, fontWeight: '800' },
-  seeAll: { color: '#b2c5ff', fontSize: 13, fontWeight: '600' },
-  emptyTx: { backgroundColor: '#101c2e', borderRadius: 16, padding: 24, alignItems: 'center' },
-  emptyTxText: { color: '#424655', fontSize: 13 },
-  txItem: { backgroundColor: '#101c2e', borderRadius: 16, padding: 16, marginBottom: 8, flexDirection: 'row', alignItems: 'center' },
-  txIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#1f2a3d', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  txIcon: { fontSize: 20 },
-  txInfo: { flex: 1 },
-  txName: { color: '#d7e3fc', fontSize: 14, fontWeight: '700' },
-  txDate: { color: '#8c90a1', fontSize: 11, marginTop: 2 },
-  txRight: { alignItems: 'flex-end' },
-  txAmount: { color: '#d7e3fc', fontSize: 14, fontWeight: '700' },
-  txMailes: { color: '#ffd65b', fontSize: 11, fontWeight: '700', marginTop: 2 },
+    // Transactions
+    transHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+      marginTop: 4,
+    },
+    sectionTitle: {
+      color: colors.textPrimary,
+      fontSize: 18,
+      fontWeight: "800",
+    },
+    seeAll: { color: colors.primary, fontSize: 13, fontWeight: "600" },
+    txItem: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 0.5,
+      borderColor: colors.borderMedium,
+    },
+    txIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.cardBackground,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+    txIcon: { fontSize: 22 },
+    txInfo: { flex: 1 },
+    txName: { color: colors.textPrimary, fontSize: 14, fontWeight: "700" },
+    txDate: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+    txRight: { alignItems: "flex-end" },
+    txAmount: { color: colors.textPrimary, fontSize: 14, fontWeight: "700" },
+    txMailes: {
+      color: colors.gold,
+      fontSize: 11,
+      fontWeight: "700",
+      marginTop: 2,
+    },
 
-  // Bottom Nav
-  bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(7,19,37,0.95)', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, paddingBottom: 24, borderTopWidth: 0.5, borderTopColor: '#1f2a3d', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  navItem: { alignItems: 'center', gap: 2 },
-  navIcon: { fontSize: 22, opacity: 0.5 },
-  navIconActive: { fontSize: 22 },
-  navLabel: { color: '#d7e3fc', fontSize: 9, fontWeight: '500', opacity: 0.5 },
-  navLabelActive: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
-  navCenter: { alignItems: 'center', marginTop: -20 },
-  navCenterBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#b2c5ff', alignItems: 'center', justifyContent: 'center', marginBottom: 4, borderWidth: 3, borderColor: '#071325' },
-  navCenterIcon: { fontSize: 26 },
-  navCenterLabel: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
-  emptyCromos: { backgroundColor: '#101c2e', borderRadius: 16, padding: 20, marginRight: 12, justifyContent: 'center', width: 280 },
-  emptyCromosText: { color: '#424655', fontSize: 12, textAlign: 'center' },
-  cromoCard: { width: 100, aspectRatio: 3/4, borderRadius: 12, marginRight: 10, overflow: 'hidden', borderWidth: 1.5, borderColor: '#1f2a3d', position: 'relative' },
-  cromoImage: { width: '100%', height: '100%' },
-  cromoBadge: { position: 'absolute', bottom: 4, left: 4, right: 4, paddingVertical: 2, borderRadius: 6, alignItems: 'center' },
-  cromoBadgeText: { color: '#fff', fontSize: 7, fontWeight: '800' },
-});
+    emptyCromos: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 16,
+      padding: 20,
+      marginRight: 12,
+      justifyContent: "center",
+      width: 280,
+    },
+    emptyCromosText: {
+      color: colors.textMuted,
+      fontSize: 12,
+      textAlign: "center",
+    },
+    cromoCard: {
+      width: 100,
+      aspectRatio: 3 / 4,
+      borderRadius: 12,
+      marginRight: 10,
+      overflow: "hidden",
+      borderWidth: 1.5,
+      position: "relative",
+    },
+    cromoImage: { width: "100%", height: "100%" },
+    cromoBadge: {
+      position: "absolute",
+      bottom: 4,
+      left: 4,
+      right: 4,
+      paddingVertical: 3,
+      borderRadius: 6,
+      alignItems: "center",
+    },
+    cromoBadgeText: { fontSize: 8, fontWeight: "800" },
+  });
+}

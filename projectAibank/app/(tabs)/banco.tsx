@@ -6,10 +6,14 @@ import {
   StyleSheet, SafeAreaView, Modal, TextInput,
   Alert, ActivityIndicator
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
+import { useTheme } from '../../context/ThemeContext';
+import BottomNav from '../../components/BottomNav';
 
 export default function BancoScreen() {
+  const { colors } = useTheme();
   const [userName, setUserName] = useState('');
   const [saldo, setSaldo] = useState(4280.50);
   const [userId, setUserId] = useState<number | null>(null);
@@ -70,7 +74,6 @@ export default function BancoScreen() {
     }
     if (!userId) return;
 
-    // Validar destinatario en transferencias
     let destinatarioId: number | null = null;
     let destinatarioSaldo: number = 0;
 
@@ -132,7 +135,6 @@ export default function BancoScreen() {
       .update({ saldo: nuevoSaldo, mailes_acumulados: nuevoMailes })
       .eq('id', userId);
 
-    // Acreditar saldo al destinatario en transferencias
     if (categoria === 'Transferencia' && destinatarioId !== null) {
       await supabase
         .from('users')
@@ -209,6 +211,8 @@ export default function BancoScreen() {
     compra: { title: 'Compra en línea', categoria: 'Compra', placeholder: 'Descripción de la compra', icon: '🛒' },
   };
 
+  const s = getStyles(colors);
+
   return (
     <SafeAreaView style={s.root}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
@@ -229,9 +233,11 @@ export default function BancoScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Balance Card */}
+        {/* Balance Card — premium */}
         <View style={s.card}>
           <View style={s.cardPatternCircle} />
+          <View style={s.cardPatternCircle2} />
+          <View style={s.cardPatternLine} />
           <View style={s.cardTop}>
             <Text style={s.cardType}>AI-Bank Débito</Text>
             <Text style={s.cardBrand}>mAiles</Text>
@@ -241,8 +247,9 @@ export default function BancoScreen() {
             <Text style={s.cardBalance}>${saldo.toLocaleString('es', { minimumFractionDigits: 2 })}</Text>
           </View>
           <View style={s.cardBottom}>
-            <TouchableOpacity onPress={handleCopiarCuenta} activeOpacity={0.7}>
+            <TouchableOpacity onPress={handleCopiarCuenta} activeOpacity={0.7} style={s.cardNumberWrap}>
               <Text style={s.cardNumber}>{formatNumeroCuenta(numeroCuenta)}</Text>
+              <Text style={s.cardCopyHint}>Toca para copiar 📋</Text>
             </TouchableOpacity>
             <View style={s.cardChip}>
               <View style={s.chipCircle1} />
@@ -254,9 +261,9 @@ export default function BancoScreen() {
         {/* Quick Actions */}
         <View style={s.actionsRow}>
           {[
-            { key: 'transferir', icon: '↗️', label: 'Transferir' },
-            { key: 'pagar', icon: '💡', label: 'Pagar' },
-            { key: 'compra', icon: '🛒', label: 'Compra online' },
+            { key: 'transferir', ionicon: 'arrow-up-circle-outline' as const, label: 'Transferir' },
+            { key: 'pagar', ionicon: 'flash-outline' as const, label: 'Pagar' },
+            { key: 'compra', ionicon: 'bag-handle-outline' as const, label: 'Compra online' },
           ].map((action) => (
             <TouchableOpacity
               key={action.key}
@@ -264,7 +271,7 @@ export default function BancoScreen() {
               onPress={() => setModal(action.key as any)}
             >
               <View style={s.actionIconWrap}>
-                <Text style={s.actionIcon}>{action.icon}</Text>
+                <Ionicons name={action.ionicon} size={26} color={colors.primary} />
               </View>
               <Text style={s.actionLabel}>{action.label}</Text>
             </TouchableOpacity>
@@ -321,33 +328,9 @@ export default function BancoScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Bottom Nav */}
-      <View style={s.bottomNav}>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)')}>
-          <Text style={s.navIcon}>🏠</Text>
-          <Text style={s.navLabel}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem}>
-          <Text style={s.navIconActive}>🏦</Text>
-          <Text style={s.navLabelActive}>Banco</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navCenter} onPress={() => router.replace('/(tabs)/mundial')}>
-          <View style={s.navCenterBtn}>
-            <Text style={s.navCenterIcon}>⚽</Text>
-          </View>
-          <Text style={s.navCenterLabel}>Mundial</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/grupo')}>
-          <Text style={s.navIcon}>👥</Text>
-          <Text style={s.navLabel}>Grupo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/perfil')}>
-          <Text style={s.navIcon}>👤</Text>
-          <Text style={s.navLabel}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNav active="banco" />
 
-      {/* Modal */}
+      {/* Transaction Modal */}
       <Modal visible={modal !== null} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
@@ -363,7 +346,7 @@ export default function BancoScreen() {
                 <TextInput
                   style={s.input}
                   placeholder={modalConfig[modal].placeholder}
-                  placeholderTextColor="#424655"
+                  placeholderTextColor={colors.textMuted}
                   value={descripcion}
                   onChangeText={setDescripcion}
                   keyboardType={modal === 'transferir' ? 'number-pad' : 'default'}
@@ -374,7 +357,7 @@ export default function BancoScreen() {
                 <TextInput
                   style={s.input}
                   placeholder="0.00"
-                  placeholderTextColor="#424655"
+                  placeholderTextColor={colors.textMuted}
                   value={monto}
                   onChangeText={setMonto}
                   keyboardType="decimal-pad"
@@ -403,6 +386,7 @@ export default function BancoScreen() {
           </View>
         </View>
       </Modal>
+
       <SobreModal
         visible={sobresModalVisible}
         cromos={cromosGanadosData}
@@ -416,80 +400,164 @@ export default function BancoScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#071325' },
-  scroll: { paddingHorizontal: 20 },
+function getStyles(colors: ReturnType<typeof import('../../context/ThemeContext').useTheme>['colors']) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.background },
+    scroll: { paddingHorizontal: 20 },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#1f2a3d', borderWidth: 2, borderColor: '#b2c5ff', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#b2c5ff', fontWeight: '800', fontSize: 16 },
-  greeting: { color: '#b2c5ff', fontSize: 18, fontWeight: '800' },
-  subGreeting: { color: '#424655', fontSize: 9, fontWeight: '600', letterSpacing: 1.5 },
-  leagueBadge: { backgroundColor: '#1f2a3d', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5, borderColor: '#424655' },
-  leagueBadgeText: { color: '#b2c5ff', fontSize: 10, fontWeight: '700' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    avatar: {
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 2, borderColor: colors.gold,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    avatarText: { color: colors.gold, fontWeight: '800', fontSize: 17 },
+    greeting: { color: colors.primary, fontSize: 18, fontWeight: '800' },
+    subGreeting: { color: colors.textMuted, fontSize: 9, fontWeight: '600', letterSpacing: 1.5 },
+    leagueBadge: {
+      backgroundColor: colors.cardBackground,
+      paddingHorizontal: 12, paddingVertical: 6,
+      borderRadius: 20, borderWidth: 0.5, borderColor: colors.borderStrong,
+    },
+    leagueBadgeText: { color: colors.primary, fontSize: 10, fontWeight: '700' },
 
-  card: { backgroundColor: '#b2c5ff', borderRadius: 24, padding: 24, marginBottom: 16, overflow: 'hidden', position: 'relative' },
-  cardPatternCircle: { position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.1)' },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  cardType: { color: '#002b73', fontSize: 12, fontWeight: '700' },
-  cardBrand: { color: '#002b73', fontSize: 22, fontWeight: '900', fontStyle: 'italic' },
-  cardMid: { marginBottom: 16 },
-  cardBalanceLabel: { color: 'rgba(0,43,115,0.6)', fontSize: 11, fontWeight: '500' },
-  cardBalance: { color: '#002b73', fontSize: 36, fontWeight: '800', letterSpacing: -1 },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardNumber: { color: '#002b73', fontFamily: 'monospace', fontSize: 13, letterSpacing: 3 },
-  cardChip: { flexDirection: 'row' },
-  chipCircle1: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,214,91,0.8)', marginRight: -8 },
-  chipCircle2: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,181,157,0.8)' },
+    // Bank Card — premium
+    card: {
+      backgroundColor: colors.primary,
+      borderRadius: 24, padding: 24, marginBottom: 16,
+      overflow: 'hidden', position: 'relative',
+      shadowColor: colors.shadowColorBlue,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 1,
+      shadowRadius: 20,
+      elevation: 10,
+    },
+    cardPatternCircle: {
+      position: 'absolute', top: -50, right: -50,
+      width: 180, height: 180, borderRadius: 90,
+      backgroundColor: 'rgba(255,255,255,0.12)',
+    },
+    cardPatternCircle2: {
+      position: 'absolute', bottom: -30, left: -30,
+      width: 120, height: 120, borderRadius: 60,
+      backgroundColor: 'rgba(255,214,91,0.15)',
+    },
+    cardPatternLine: {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      height: 70, backgroundColor: 'rgba(0,0,0,0.06)',
+    },
+    cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+    cardType: { color: '#002b73', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+    cardBrand: { color: '#002b73', fontSize: 22, fontWeight: '900', fontStyle: 'italic' },
+    cardMid: { marginBottom: 16 },
+    cardBalanceLabel: { color: 'rgba(0,43,115,0.65)', fontSize: 11, fontWeight: '500', marginBottom: 2 },
+    cardBalance: {
+      color: '#002b73', fontSize: 36, fontWeight: '800', letterSpacing: -1,
+      textShadowColor: 'rgba(0,43,115,0.15)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
+    },
+    cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    cardNumberWrap: {},
+    cardNumber: { color: '#002b73', fontFamily: 'monospace', fontSize: 13, letterSpacing: 3, fontWeight: '600' },
+    cardCopyHint: { color: 'rgba(0,43,115,0.45)', fontSize: 9, marginTop: 2 },
+    cardChip: { flexDirection: 'row' },
+    chipCircle1: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,214,91,0.85)', marginRight: -9 },
+    chipCircle2: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,181,157,0.85)' },
 
-  actionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  actionBtn: { flex: 1, alignItems: 'center', gap: 8 },
-  actionIconWrap: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#1f2a3d', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: '#424655' },
-  actionIcon: { fontSize: 24 },
-  actionLabel: { color: '#d7e3fc', fontSize: 11, fontWeight: '600' },
+    // Quick Actions
+    actionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+    actionBtn: { flex: 1, alignItems: 'center', gap: 8 },
+    actionIconWrap: {
+      width: 58, height: 58, borderRadius: 16,
+      backgroundColor: colors.cardBackground,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 0.5, borderColor: colors.borderStrong,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    actionIcon: { fontSize: 26 },
+    actionLabel: { color: colors.textPrimary, fontSize: 11, fontWeight: '600' },
 
-  periodRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { color: '#d7e3fc', fontSize: 18, fontWeight: '800' },
-  periodBtns: { flexDirection: 'row', gap: 8 },
-  periodBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#1f2a3d', borderWidth: 0.5, borderColor: '#424655' },
-  periodBtnActive: { backgroundColor: '#b2c5ff' },
-  periodBtnText: { color: '#8c90a1', fontSize: 12, fontWeight: '600' },
-  periodBtnTextActive: { color: '#002b73' },
+    // Period
+    periodRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    sectionTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '800' },
+    periodBtns: { flexDirection: 'row', gap: 8 },
+    periodBtn: {
+      paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 0.5, borderColor: colors.borderStrong,
+    },
+    periodBtnActive: { backgroundColor: colors.primary },
+    periodBtnText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
+    periodBtnTextActive: { color: '#002b73', fontWeight: '700' },
 
-  empty: { alignItems: 'center', padding: 40, gap: 12 },
-  emptyIcon: { fontSize: 40 },
-  emptyText: { color: '#424655', fontSize: 13, textAlign: 'center' },
+    // Empty
+    empty: { alignItems: 'center', padding: 40, gap: 12 },
+    emptyIcon: { fontSize: 40 },
+    emptyText: { color: colors.textMuted, fontSize: 13, textAlign: 'center' },
 
-  txItem: { backgroundColor: '#101c2e', borderRadius: 16, padding: 16, marginBottom: 8, flexDirection: 'row', alignItems: 'center' },
-  txIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#1f2a3d', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  txIcon: { fontSize: 20 },
-  txInfo: { flex: 1 },
-  txName: { color: '#d7e3fc', fontSize: 14, fontWeight: '700' },
-  txDate: { color: '#8c90a1', fontSize: 11, marginTop: 2 },
-  txRight: { alignItems: 'flex-end' },
-  txAmount: { color: '#ffb4ab', fontSize: 14, fontWeight: '700' },
-  txMailes: { color: '#ffd65b', fontSize: 11, fontWeight: '700', marginTop: 2 },
+    // Transactions
+    txItem: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 16, padding: 14, marginBottom: 8,
+      flexDirection: 'row', alignItems: 'center',
+      borderWidth: 0.5, borderColor: colors.borderMedium,
+    },
+    txIconWrap: {
+      width: 44, height: 44, borderRadius: 12,
+      backgroundColor: colors.cardBackground,
+      alignItems: 'center', justifyContent: 'center', marginRight: 12,
+    },
+    txIcon: { fontSize: 22 },
+    txInfo: { flex: 1 },
+    txName: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
+    txDate: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+    txRight: { alignItems: 'flex-end' },
+    txAmount: { color: colors.error, fontSize: 14, fontWeight: '700' },
+    txMailes: { color: colors.gold, fontSize: 11, fontWeight: '700', marginTop: 2 },
 
-  bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(7,19,37,0.95)', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, paddingBottom: 24, borderTopWidth: 0.5, borderTopColor: '#1f2a3d', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  navItem: { alignItems: 'center', gap: 2 },
-  navIcon: { fontSize: 22, opacity: 0.5 },
-  navIconActive: { fontSize: 22 },
-  navLabel: { color: '#d7e3fc', fontSize: 9, fontWeight: '500', opacity: 0.5 },
-  navLabelActive: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
-  navCenter: { alignItems: 'center', marginTop: -20 },
-  navCenterBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#b2c5ff', alignItems: 'center', justifyContent: 'center', marginBottom: 4, borderWidth: 3, borderColor: '#071325' },
-  navCenterIcon: { fontSize: 26 },
-  navCenterLabel: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#142032', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, borderTopWidth: 0.5, borderColor: '#424655' },
-  modalTitle: { color: '#d7e3fc', fontSize: 20, fontWeight: '800', marginBottom: 20 },
-  inputLabel: { color: '#b2c5ff', fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 6, marginLeft: 4 },
-  input: { backgroundColor: '#030e20', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, color: '#d7e3fc', fontSize: 15, marginBottom: 16, borderWidth: 0.5, borderColor: '#424655' },
-  mailesPreview: { color: '#ffd65b', fontSize: 13, fontWeight: '600', textAlign: 'center', marginBottom: 16 },
-  btnConfirm: { backgroundColor: '#b2c5ff', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 10 },
-  btnConfirmText: { color: '#002b73', fontWeight: '800', fontSize: 16 },
-  btnCancel: { alignItems: 'center', paddingVertical: 10 },
-  btnCancelText: { color: '#8c90a1', fontSize: 14, fontWeight: '600' },
-});
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+    modalCard: {
+      backgroundColor: colors.cardBackgroundAlt,
+      borderTopLeftRadius: 28, borderTopRightRadius: 28,
+      padding: 28,
+      borderTopWidth: 0.5, borderColor: colors.borderStrong,
+    },
+    modalTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '800', marginBottom: 20 },
+    inputLabel: {
+      color: colors.primary, fontSize: 10, fontWeight: '700',
+      letterSpacing: 2, marginBottom: 6, marginLeft: 4,
+    },
+    input: {
+      backgroundColor: colors.inputBackground,
+      borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
+      color: colors.textPrimary, fontSize: 15, marginBottom: 16,
+      borderWidth: 0.5, borderColor: colors.borderStrong,
+    },
+    mailesPreview: {
+      color: colors.gold, fontSize: 13, fontWeight: '600',
+      textAlign: 'center', marginBottom: 16,
+    },
+    btnConfirm: {
+      backgroundColor: colors.gold,
+      borderRadius: 16, paddingVertical: 16,
+      alignItems: 'center', marginBottom: 10,
+      shadowColor: colors.goldShadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 1,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    btnConfirmText: { color: colors.textOnGold, fontWeight: '800', fontSize: 16, textTransform: 'uppercase', letterSpacing: 0.5 },
+    btnCancel: { alignItems: 'center', paddingVertical: 10 },
+    btnCancelText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  });
+}

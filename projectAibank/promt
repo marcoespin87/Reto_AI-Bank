@@ -1,0 +1,621 @@
+# PROMPT UI/UX — AL-BANK mAILES (MUNDIAL 2026)
+
+## 📋 CONTEXTO DEL PROYECTO
+
+**Actúa como un Senior UI/UX Designer especializado en apps bancarias, fintech y gamificación deportiva.**
+
+- **Producto:** Al-Bank mAiles — App bancaria gamificada para el Mundial 2026
+- **Plataforma:** React Native + Expo (iOS/Android)
+- **Stack Tecnológico:**
+  - React Native + Expo Router (navegación)
+  - Supabase (backend + autenticación)
+  - StyleSheet (estilos nativos, NO Tailwind)
+- **Estado:** Toda la lógica y funcionalidad están 100% implementadas y funcionando. Solo se requiere mejorar la capa visual y la experiencia del usuario.
+
+**Pantallas actuales:**
+
+1. **Inicio (Home):** Dashboard con saldo, mAiles, tarjeta bancaria, progreso, cromos recientes, movimientos recientes
+2. **Banco:** Gestión de dinero, transferencias, transacciones
+3. **Mundial:** Predicciones de IA para partidos del Mundial, stats de equipos, jugadores clave, recompensas
+4. **Grupo:** Desafíos grupales, rankings, competencia entre amigos
+5. **Álbum:** Colección de cromos (stickers) por rareza
+6. **Perfil:** Datos del usuario, nivel, medallas, historial
+
+---
+
+## 🎨 PALETA DE COLORES ACTUAL
+
+```
+Background Oscuro: #071325 (azul muy oscuro)
+Azul Premium: #b2c5ff (azul claro iridescente)
+Azul Medio: #1f2a3d (fondos de tarjetas)
+Dorado/Oro: #ffd65b (premios, mAiles, estrellas)
+Gris Neutro: #424655 (textos secundarios)
+Gris Oscuro: #8c90a1 (étiquetas)
+Rojo/Rosa (error): #ffb4ab
+Verde (éxito): #4CAF50 (si aplica)
+```
+
+**Patrón visual:** Fondos oscuros primarios con acentos dorados, robusta y premium.
+
+---
+
+## � DARK MODE & LIGHT MODE
+
+### Estado Actual
+
+- ✅ **Dark Mode implementado:** Tema oscuro completamente funcional (colores primarios ya documentados arriba)
+- ❌ **Light Mode NO implementado:** Se requiere crear paleta de colores para modo claro
+
+### Implementación Requerida
+
+#### 1. Paleta Light Mode (Modo Día/Claro)
+
+| Elemento                 | Dark Mode             | Light Mode         |
+| ------------------------ | --------------------- | ------------------ |
+| **Background Principal** | #071325               | #f5f7fa            |
+| **Fondo Tarjetas**       | #1f2a3d               | #ffffff            |
+| **Azul Premium (Texto)** | #b2c5ff               | #0052cc            |
+| **Dorado (Premios)**     | #ffd65b               | #f09e1c            |
+| **Gris Neutro**          | #424655               | #7d8a96            |
+| **Gris Oscuro (Labels)** | #8c90a1               | #9ca3af            |
+| **Rojo (Error)**         | #ffb4ab               | #ee5a52            |
+| **Verde (Éxito)**        | #4CAF50               | #1fb742            |
+| **Borde Sutil**          | rgba(178,197,255,0.2) | rgba(0,82,204,0.1) |
+| **Sombra**               | rgba(0,0,0,0.15)      | rgba(0,0,0,0.08)   |
+
+**Principios Light Mode:**
+
+- Fondos claros, texto oscuro para máxima legibilidad
+- Acentos dorados conservan prominencia (más oscuros que en dark)
+- Sombras más suaves para no sobrecargar visualmente
+- Bordes sutiles para separación sin contraste brutal
+
+#### 2. Botón de Cambio de Tema
+
+**Ubicación:** Perfil (esquina superior derecha del header o en pantalla de Perfil)
+
+**Especificaciones:**
+
+```
+Posición: Top-right nav, al lado del badge de liga
+Tamaño: 40x40px
+Icono: 🌙 (Dark Mode activo) / ☀️ (Light Mode activo)
+Acciones:
+  - Toque rápido: Cambiar tema
+  - Animación: Rotación (180°) del ícono con fade (200ms)
+  - Persistencia: Guardar preferencia en AsyncStorage o Supabase
+```
+
+**Diseño del Botón:**
+
+```javascript
+// Dark Mode (botón visible)
+const darkModeBtn = {
+  backgroundColor: "rgba(178, 197, 255, 0.1)",
+  borderRadius: 20,
+  padding: 8,
+  borderWidth: 1,
+  borderColor: "rgba(178, 197, 255, 0.3)",
+  icon: "🌙",
+  iconColor: "#b2c5ff",
+};
+
+// Light Mode (botón visible)
+const lightModeBtn = {
+  backgroundColor: "rgba(0, 82, 204, 0.1)",
+  borderRadius: 20,
+  padding: 8,
+  borderWidth: 1,
+  borderColor: "rgba(0, 82, 204, 0.2)",
+  icon: "☀️",
+  iconColor: "#0052cc",
+};
+```
+
+#### 3. Componente Global de Tema
+
+**Estructura Recomendada:**
+
+```
+constants/
+  ├── theme.ts (Actualizar: agregar Light theme)
+  └── colors.ts (Opcional: separar colores por modo)
+
+hooks/
+  ├── use-color-scheme.ts (EXISTENTE - mejorar)
+  └── use-theme.ts (NUEVO - contexto global de tema)
+
+context/
+  └── ThemeContext.tsx (NUEVO - proveedor de tema)
+```
+
+**ThemeContext.tsx (Pseudocódigo):**
+
+```typescript
+import React, { createContext, useState, useEffect } from 'react';
+import { useColorScheme } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export const ThemeContext = createContext();
+
+export const ThemeProvider = ({ children }) => {
+  const systemScheme = useColorScheme();
+  const [theme, setTheme] = useState(systemScheme || 'dark');
+
+  useEffect(() => {
+    // Cargar preferencia guardada
+    const loadTheme = async () => {
+      const saved = await AsyncStorage.getItem('app-theme');
+      if (saved) setTheme(saved);
+    };
+    loadTheme();
+  }, []);
+
+  const toggleTheme = async () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    await AsyncStorage.setItem('app-theme', newTheme);
+  };
+
+  const colors = theme === 'dark' ? DARK_COLORS : LIGHT_COLORS;
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme, colors }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+```
+
+#### 4. Aplicación en Componentes
+
+**Ejemplo de Actualización en Home (index.tsx):**
+
+```typescript
+import { useContext } from 'react';
+import { ThemeContext } from '../../context/ThemeContext';
+
+export default function HomeScreen() {
+  const { colors, theme, toggleTheme } = useContext(ThemeContext);
+
+  return (
+    <SafeAreaView style={[s.root, { backgroundColor: colors.background }]}>
+      {/* Header con botón de tema */}
+      <View style={s.header}>
+        {/* ...contenido existente... */}
+        <TouchableOpacity onPress={toggleTheme} style={s.themeToggle}>
+          <Text style={{ fontSize: 20 }}>
+            {theme === 'dark' ? '🌙' : '☀️'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Resto de pantalla con colors dinámicos */}
+      <View style={{ backgroundColor: colors.cardBackground }}>
+        {/* ...contenido... */}
+      </View>
+    </SafeAreaView>
+  );
+}
+```
+
+#### 5. Transición Suave entre Temas
+
+**Animación Recomendada:**
+
+```typescript
+import { Animated } from 'react-native';
+
+const fadeAnim = useRef(new Animated.Value(0)).current;
+
+const handleThemeChange = () => {
+  Animated.timing(fadeAnim, {
+    toValue: 1,
+    duration: 200,
+    useNativeDriver: true,
+  }).start(() => {
+    toggleTheme();
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  });
+};
+
+return (
+  <Animated.View style={{ opacity: fadeAnim }}>
+    {/* Contenido que cambia de tema */}
+  </Animated.View>
+);
+```
+
+---
+
+## �🎯 OBJETIVOS DE DISEÑO
+
+### 1. Estética Bancaria Premium & Exclusividad
+
+- **Línea Visual:** Minimalista, elegante, corporativa (inspirada en TCS: azul + blanco + dorado)
+- **Tipografía:** Sans-serif moderno, alta legibilidad (Inter, SF Pro, Roboto)
+- **Espacios:** Generosos, sin saturación. Principio de "breathing room"
+- **Efectos:** Sombras sutiles, bordes suavizados, gradientes minimalistas
+
+### 2. Gamificación Deportiva Sutil
+
+- **Elementos de Fútbol:** Trofeos ⚽🏆🥇, estadios, banderas, rachas (forma).
+- **Microinteracciones:** Animaciones suaves al ganar mAiles, acertar pronóstico, desbloquear cromos.
+- **Feedback Visual:** Toques táctiles con feedback háptico (haptic), estados hover/active claros.
+
+### 2b. Iconografía Detallada
+
+#### 🎯 Guía de Iconos por Contexto
+
+| Ubicación                                   | Icono | Estilo           | Color                                  | Tamaño | Uso                          |
+| ------------------------------------------- | ----- | ---------------- | -------------------------------------- | ------ | ---------------------------- |
+| **Navbar - Inicio**                         | 🏠    | Outline          | Gris (#8c90a1) / Azul activo (#b2c5ff) | 24px   | Botón naveg. inactivo/activo |
+| **Navbar - Banco**                          | 🏦    | Outline          | Gris (#8c90a1) / Azul activo (#b2c5ff) | 24px   | Botón naveg. inactivo/activo |
+| **Navbar - Mundial**                        | ⚽    | Filled           | Dorado (#ffd65b)                       | 28px   | Destacado central            |
+| **Navbar - Grupo**                          | 👥    | Outline          | Gris (#8c90a1) / Azul activo (#b2c5ff) | 24px   | Botón naveg. inactivo/activo |
+| **Navbar - Perfil**                         | 👤    | Outline          | Gris (#8c90a1) / Azul activo (#b2c5ff) | 24px   | Botón naveg. inactivo/activo |
+| **Dashboard - Progreso**                    | ⭐    | Filled           | Dorado (#ffd65b)                       | 20px   | Progreso de mAiles           |
+| **Dashboard - Categoría (Compra)**          | 🛒    | Filled           | Vary by category                       | 18px   | Ícono de transacción         |
+| **Dashboard - Categoría (Café)**            | ☕    | Filled           | Vary by category                       | 18px   | Ícono de transacción         |
+| **Dashboard - Categoría (Entretenimiento)** | 🎭    | Filled           | Vary by category                       | 18px   | Ícono de transacción         |
+| **Dashboard - Categoría (Transporte)**      | 🚗    | Filled           | Vary by category                       | 18px   | Ícono de transacción         |
+| **Dashboard - Categoría (Viajes)**          | ✈️    | Filled           | Vary by category                       | 18px   | Ícono de transacción         |
+| **Mundial - Equipo Local**                  | 🇪🇨    | Emoji            | N/A                                    | 40px   | Bandera país                 |
+| **Mundial - Equipo Visitante**              | 🇨🇮    | Emoji            | N/A                                    | 40px   | Bandera país                 |
+| **Mundial - Jugador Clave**                 | 🏆    | Filled           | Dorado (#ffd65b)                       | 16px   | Badge estrella en jugador    |
+| **Éxito - Trofeo Central**                  | 🏆    | Filled           | Dorado (#ffd65b)                       | 80px   | Animado (entrada spring)     |
+| **Cromos - Rareza (Épico)**                 | ✨    | Filled           | Dorado (#ffd65b)                       | 14px   | Badge rareza                 |
+| **Cromos - Rareza (Raro)**                  | 💎    | Filled           | Azul (#b2c5ff)                         | 14px   | Badge rareza                 |
+| **Cromos - Rareza (Común)**                 | 🃏    | Outline          | Gris (#424655)                         | 14px   | Badge rareza                 |
+| **Ranking - Puesto 1**                      | 🥇    | Filled           | Dorado (#ffd65b)                       | 18px   | Medalla oro                  |
+| **Ranking - Puesto 2**                      | 🥈    | Filled           | Plateado (#c0c0c0)                     | 18px   | Medalla plata                |
+| **Ranking - Puesto 3**                      | 🥉    | Filled           | Bronce (#cd7f32)                       | 18px   | Medalla bronce               |
+| **Botón Volver (Back)**                     | ←     | Outline          | Azul (#b2c5ff)                         | 20px   | Navegación atrás             |
+| **Botón Copiar**                            | 📋    | Outline          | Azul (#b2c5ff)                         | 16px   | Acción secundaria            |
+| **Botón Compartir**                         | 📤    | Filled           | Dorado (#ffd65b)                       | 16px   | Acción CTA                   |
+| **Loading/Enviando**                        | ⏳    | Outline animated | Azul (#b2c5ff)                         | 20px   | Estado de proceso            |
+| **Error**                                   | ⚠️    | Filled           | Rojo (#ffb4ab)                         | 18px   | Alerta/error                 |
+| **Éxito**                                   | ✅    | Filled           | Verde (#4CAF50)                        | 18px   | Confirmación                 |
+
+---
+
+#### 🎨 Estilos de Iconografía
+
+**Outline (Línea - Acciones Secundarias/Navegación):**
+
+- Stroke weight: 2px
+- Color: #8c90a1 (gris neutro) o #b2c5ff (azul cuando activo)
+- Tamaño: 20-24px
+- Uso: Navbar inactivo, botones secundarios, acciones no críticas
+- Ejemplo: 🏠 🏦 👥 👤
+
+**Filled (Relleno - Premios/Logros/CTAs):**
+
+- Color: #ffd65b (dorado) para premios y highlights
+- Color: #b2c5ff (azul) para acentos secundarios
+- Color: #ffb4ab (rojo) para alertas
+- Tamaño: 16-28px según prominencia
+- Uso: Trofeos, medallas, botones dorados, badges de éxito
+- Ejemplo: 🏆 ⭐ 🥇 ✨
+
+**Contextuales (Categorías):**
+
+- Cada categoría de transacción tiene un emoji único
+- Tamaño consistente: 18px
+- Color: Hereda del tema pero puede tener variantes según categoría
+- Uso: Visual recognition rápido en movimientos
+
+---
+
+#### 🔌 Librerías Recomendadas (Si necesitas SVG)
+
+Para casos donde los emojis no sean suficientes:
+
+1. **Heroicons** (React Native compatible)
+   - Outline + Solid variants
+   - Premium feel
+   - Instalación: `npm install heroicons`
+2. **Feather Icons** (Ligero, simple)
+   - 24px base
+   - Stroke-based outline style
+   - Instalación: `npm install react-native-feather`
+
+3. **react-native-vector-icons** (ANTES de cambiar)
+   - Ionicons, MaterialCommunity, FontAwesome
+   - Ya está ampliamente usado en React Native
+   - Instalación: `npm install react-native-vector-icons`
+
+#### ⚡ Recomendación para Fase 1 (HOY)
+
+- **Mantener emojis** para cambio rápido (0 cambios en dependencias)
+- Cambiar solo colores y tamaños vía StyleSheet
+- Si necesitas más control visual → Migrar a `react-native-vector-icons` en Fase 2
+
+---
+
+#### 📝 Casos de Uso Específicos del Proyecto
+
+**Dashboard - Badges de Progreso:**
+
+```
+Visualmente: [⭐ Tu Progreso] — [5,000 mAiles] [Medalla 3]
+           Estado visual: Icono lleno dorado, número destacado, badge plateado
+```
+
+**Mundial - Stats Bento Cards:**
+
+```
+[FORMA RECIENTE]
+[🟢 🟢 🟡 🔴 🔴]  ← Dots coloreados (G=azul, E=gris, P=rojo)
+
+[FIFA RANKING]
+[#41 vs #52]  ← Números, sin ícono (claridad)
+
+[GOLES (A:R)]
+[4:3 vs 3:2]  ← Score format, sin ícono
+
+[JUGADORES CLAVE]
+[🇪🇨 Enner Valencia] vs [Sébastien Haller 🇨🇮]  ← Banderas + nombre
+```
+
+**Éxito - Celebración:**
+
+```
+        ┏━━━━━━━━━━━━┓
+        ┃   🏆      ┃  ← Grandes, animado scale 0→1
+        ┃ ¡ACERTASTE! ┃  ← Texto dorado, peso 900
+        ┃ +1,200 mAiles ┃ ← Número flotante hacia arriba
+        ┗━━━━━━━━━━━━┛
+Confeti: ⭐ 💛 ⚽ cayendo
+```
+
+**Ranking - Medallas:**
+
+```
+🥇 Medalla 1: TOP 1 - Dorado (#ffd65b)
+🥈 Medalla 2: TOP 2 - Plateado (#c0c0c0)
+🥉 Medalla 3: TOP 3 - Bronce (#cd7f32)
+```
+
+---
+
+#### 🎬 Animaciones de Iconos
+
+1. **Trofeo de Éxito:** `Animated.spring(scale, { toValue: 1 })` — elastic bounce
+2. **Confeti:** `Animated.loop(fadeOut)` — caída suave
+3. **Medalla de Ranking:** `Animated.stagger(300, [scaleIn, slideUp])`
+4. **Badge de Rareza:** `Animated.pulse(opacity)` — parpadeo sutil
+5. **Countdown:** `Animated.loop(opacity: 1 → 0.5)` — urgencia visual
+
+### 3. Jerarquía de Información Mejorada
+
+#### 📊 Dashboard (Pantalla de Inicio)
+
+**Objetivo:** Que el usuario vea de un vistazo: su saldo bancario, mAiles acumulados, progreso y opciones de acción.
+
+**Mejoras propuestas:**
+
+- **Tarjeta Bancaria:** Efecto 3D sutil, gradiente de azul a dorado en esquinas, patrón de círculos traslúcidos de fondo, tipografía monoespaciada elegante en número de cuenta.
+- **Saldo (Destacado Principal):** Fuente extra grande (36-40px), peso 800, color dorado (#ffd65b), con pequeña etiqueta arriba en gris.
+- **Progreso de mAiles:** Barra de progreso visual con icono de estrella, y contador "X compras para próxima estrella".
+- **Sección de Cromos:** Cards horizontales con imagen del cromo, badge de rareza (épico=dorado, raro=azul, común=gris), sombra sutil.
+- **Movimientos Recientes:** Lista con icono de categoría (emoji o svg), nombre, fecha, monto, mAiles ganados. Bordes separadores sutiles.
+
+#### ⚽ Pronósticos (Pantalla Mundial)
+
+**Objetivo:** Que los pronósticos de IA se vean confiables, premium y con clarity en datos.
+
+**Mejoras propuestas:**
+
+- **Hero Card (Partido):** Fondo gradiente azul oscuro, bordes redondeados (20px), padding generoso, sombra 3D.
+- **Equipos:** Banderas grandes en círculos con borde de color, nombres en tipografía bold.
+- **Estadio & Hora:** Texto pequeño en gris, posicionado abajo con icono de reloj.
+- **Stats Bento (Forma, Ranking, Goles, Jugadores):**
+  - Cada stat en una "tarjeta bento" con fondo ligeramente más claro (#1f2a3d).
+  - Iconografía clara: forma reciente como puntos de color, ranking como números, goles como score.
+  - Tipografía: Label pequeño en gris, valor grande en blanco/dorado según la métrica.
+- **Countdown (Cierre de predicción):** Badge rojo/naranja con icono de reloj, tipografía bold, animación de parpadeo suave.
+- **Botón "Predecir":** CTA prominente, fondo dorado (#ffd65b), texto azul oscuro, efecto de presión tactil.
+
+#### 🎉 Pantalla de Éxito ("¡Acertaste!")
+
+**Objetivo:** Celebración memorable del usuario al acertar pronóstico y ganar mAiles.
+
+**Mejoras propuestas:**
+
+- **Animación de Entrada:** Pantalla llena con confeti animado (círculos/estrellas cayendo).
+- **Icono Central:** Trofeo o medalla animado (emoji 🏆 o SVG), escala 0 → 1 (spring animation).
+- **Textos:**
+  - Headline grande: "¡ACERTASTE!" en dorado (#ffd65b), peso 900
+  - Subheading: "Pronóstico correcto: Ecuador 2 - Costa de Marfil 1"
+  - Reward grande: "+1,200 mAiles" en dorado, efecto de número flotante hacia arriba
+- **Acciones:** Botón "Ver próximo partido" (dorado), botón "Compartir" (azul).
+
+#### 📱 Banco (Transferencias)
+
+**Mejoras propuestas:**
+
+- **Número de Cuenta:** Formato visible: XXXX XXXX XXXX XXXX, botón "Copiar" con feedback visual (toast).
+- **Campos de Transferencia:** Inputs con borde azul claro en focus, placeholder en gris, ícono de validación en verde al llenar.
+- **CTA de Envío:** Botón dorado, efecto de presión, loader animado durante envío.
+
+#### 👥 Grupo (Competencia)
+
+**Mejoras propuestas:**
+
+- **Ranking de Miembros:** Avatar + nombre + mAiles, con badge #1 °2 #3 en dorado/plateado/bronce.
+- **Tablas de Desafíos:** Rows alternados (fondo azul oscuro / ligeramente más claro) para legibilidad.
+- **Medallas/Logros:** Badges en esquinas (épico=⭐ dorado, raro=💫 azul).
+
+---
+
+## 🛠️ SUGERENCIAS DE CÓDIGO (StyleSheet)
+
+### Patrón de Tarjeta Premium
+
+```javascript
+const premiumCardStyle = StyleSheet.create({
+  card: {
+    backgroundColor: "#1f2a3d",
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 0.5,
+    borderColor: "rgba(178, 197, 255, 0.2)", // Borde azul sutil
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5, // Android
+  },
+});
+```
+
+### Patrón de Texto Destacado (Saldo/Monto)
+
+```javascript
+const highlightTextStyle = StyleSheet.create({
+  amount: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#ffd65b",
+    letterSpacing: -1,
+    textShadowColor: "rgba(255, 214, 91, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+});
+```
+
+### Patrón de Badge/Pill
+
+```javascript
+const badgeStyle = StyleSheet.create({
+  badge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 214, 91, 0.2)", // Fondo dorado translúcido
+    borderWidth: 1,
+    borderColor: "#ffd65b",
+  },
+  badgeText: {
+    color: "#ffd65b",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+});
+```
+
+### Patrón de Botón CTA (Dorado)
+
+```javascript
+const ctaButtonStyle = StyleSheet.create({
+  button: {
+    backgroundColor: "#ffd65b",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "rgba(255, 214, 91, 0.3)",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  buttonText: {
+    color: "#071325",
+    fontSize: 16,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+});
+```
+
+---
+
+## 🎬 MICROINTERACCIONES RECOMENDADAS
+
+1. **Al ganar mAiles:** Número flota hacia arriba + parpadea (Animated.Value)
+2. **Al tocar botón CTA:** Efecto de presión (scale: 0.95), feedback háptico
+3. **Al desbloquear cromo:** Entrada del cromo con rotación (180° → 0°)
+4. **En listas de ranking:** Animar entrada de cada row con delay progresivo
+5. **En countdown:** Pulso suave (opacity) para urgencia visual
+
+---
+
+## 📐 JERARQUÍA TIPOGRÁFICA
+
+| Elemento    | Size    | Weight  | Color             | Uso                         |
+| ----------- | ------- | ------- | ----------------- | --------------------------- |
+| Headlines   | 28-36px | 800-900 | #b2c5ff o #ffd65b | Títulos, números destacados |
+| Subheadings | 18-22px | 700     | #b2c5ff           | Títulos de secciones        |
+| Body        | 16px    | 500     | #ffffff           | Textos normales             |
+| Labels      | 11-12px | 600     | #8c90a1           | Etiquetas, helper text      |
+| Monospace   | 13px    | 500     | #b2c5ff           | Números de cuenta, códigos  |
+
+---
+
+## ❌ RESTRICCIONES
+
+- **NO** agregar nuevas funcionalidades (no chats, no foros, no compras).
+- **NO** cambiar el flujo de navegación (5 tabs principales).
+- **NO** modificar lógica de recompensas ni sistema de rachas.
+- **NO** eliminar ni reorganizar pantallas.
+- Solo mejoras visuales y microinteracciones en componentes existentes.
+
+---
+
+## ✅ ENTREGABLES
+
+1. **Guía de Mejoras Visuales:** Por pantalla (Home, Mundial, Banco, Grupo, Álbum, Perfil)
+2. **Código StyleSheet:** Componentes reutilizables (cards, buttons, badges)
+3. **Animaciones:** Especificación de microinteracciones con Animated API
+4. **Iconografía:** Recomendaciones de íconos (outline vs. filled)
+5. **Paleta Actualizada:** Si hay cambios sutiles al color scheme (mantener base actual)
+
+---
+
+## ⚡ PRIORIDAD (Alto Impacto - Rápida Implementación)
+
+### Fase 1 (CRÍTICA - HOY):
+
+- Dashboard: Mejorar card de tarjeta bancaria + saldo destacado
+- Mundial: Hero card mejorada + bento cards para stats
+- Botones CTA: Aplicar estilos dorados premium
+
+### Fase 2 (SI TIEMPO):
+
+- Pantalla de Éxito: Animación de celebración
+- Cromos: Animación de desbloqueo
+- Rankings: Animación de entrada en grupo
+
+---
+
+## 🏦 IDENTIDAD VISUAL (TATA + Fintech)
+
+- Inspiración TCS: Azul corporativo (#071325 ya presente), acentos en dorado (premium), blanco limpio
+- Confianza: Espacios generosos, tipografía clara, efectos sutiles (sin exceso)
+- Modernidad: Redondeado (20px+), sombras suaves, transiciones fluidas
+- Exclusividad: "Clientes Únicos, Beneficios Únicos" → Experiencia premium en cada detalle
+
+---
+
+## 📍 DEADLINE & SCOPE
+
+**Plazo:** Hoy, 7 de abril de 2026  
+**Enfoque:** Mejoras visuales de alto impacto + implementación rápida en StyleSheet  
+**Entrega:** Código directo + sugerencias de animaciones + componentes reutilizables
+
+---
+
+**¿Listo para elevar Al-Bank mAiles a nivel premium?** 🚀

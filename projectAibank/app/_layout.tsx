@@ -1,25 +1,27 @@
-import { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { Stack, router } from 'expo-router';
-import { supabase } from '../lib/supabase';
-import * as Linking from 'expo-linking';
+import * as Linking from "expo-linking";
+import { Stack, router } from "expo-router";
+import { useEffect } from "react";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import { ThemeProvider } from "../context/ThemeContext";
+import { supabase } from "../lib/supabase";
 
 export default function RootLayout() {
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        router.replace('/(tabs)');
+        router.replace("/(tabs)");
       } else {
-        router.replace('/(auth)/login');
+        router.replace("/(auth)/login");
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        router.replace('/(tabs)');
+        router.replace("/(tabs)");
       } else {
-        router.replace('/(auth)/login');
+        router.replace("/(auth)/login");
       }
     });
 
@@ -27,10 +29,10 @@ export default function RootLayout() {
       const url = event.url;
       const params: Record<string, string> = {};
 
-      const hashPart = url.split('#')[1];
+      const hashPart = url.split("#")[1];
       if (hashPart) {
-        hashPart.split('&').forEach(part => {
-          const [key, value] = part.split('=');
+        hashPart.split("&").forEach((part) => {
+          const [key, value] = part.split("=");
           if (key && value) params[key] = decodeURIComponent(value);
         });
       }
@@ -43,9 +45,9 @@ export default function RootLayout() {
       }
     };
 
-    const linkingSub = Linking.addEventListener('url', handleDeepLink);
+    const linkingSub = Linking.addEventListener("url", handleDeepLink);
 
-    Linking.getInitialURL().then(url => {
+    Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
     });
 
@@ -56,9 +58,13 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

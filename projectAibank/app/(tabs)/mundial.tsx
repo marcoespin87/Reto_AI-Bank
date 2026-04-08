@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Animated,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
 import ChatbotModal from '../../components/ChatbotModal';
+import { useTheme } from '../../context/ThemeContext';
+import BottomNav from '../../components/BottomNav';
 
-// ─── DATOS DEL PARTIDO (dinámico — cambia aquí para otro partido) ───────────
+// ─── DATOS DEL PARTIDO ───────────────────────────────────────────────────────
 const PARTIDO = {
   id: 'ecua-civ-2026',
   fase: 'Fase de Grupos',
@@ -45,16 +47,10 @@ const PARTIDO = {
   },
 };
 
-const FORMA_COLOR: Record<'G' | 'E' | 'P', string> = {
-  G: '#b2c5ff',
-  E: '#424655',
-  P: '#ffb4ab',
-};
-
 export default function MundialScreen() {
+  const { colors } = useTheme();
   const [userId, setUserId] = useState<number | null>(null);
   const [userMailes, setUserMailes] = useState(0);
-  const [ligaBadge, setLigaBadge] = useState('Liga Plata · Medalla 3');
   const [golesLocal, setGolesLocal] = useState(1);
   const [golesVisitante, setGolesVisitante] = useState(0);
   const [prediccionEnviada, setPrediccionEnviada] = useState(false);
@@ -64,9 +60,20 @@ export default function MundialScreen() {
   const [mostrarPrediccion, setMostrarPrediccion] = useState(false);
   const [chatbotVisible, setChatbotVisible] = useState(false);
 
+  // Animación parpadeo countdown
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    loadUser();
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.5, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
   }, []);
+
+  useEffect(() => { loadUser(); }, []);
 
   async function loadUser() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -81,10 +88,7 @@ export default function MundialScreen() {
     if (data) {
       setUserId(data.id);
       setUserMailes(data.mailes_acumulados || 0);
-    }
 
-    // Buscar predicción previa para este partido
-    if (data) {
       const { data: pred } = await supabase
         .from('predictions')
         .select('*')
@@ -99,7 +103,6 @@ export default function MundialScreen() {
         setGolesVisitante(pred.goles_visitante);
       }
 
-      // Verificar racha (últimas predicciones correctas)
       const { data: preds } = await supabase
         .from('predictions')
         .select('estado')
@@ -113,14 +116,8 @@ export default function MundialScreen() {
   }
 
   async function confirmarPrediccion() {
-    if (!userId) {
-      Alert.alert('Error', 'No se pudo identificar tu usuario');
-      return;
-    }
-    if (prediccionEnviada) {
-      Alert.alert('Ya predijiste', 'Solo puedes enviar una predicción por partido');
-      return;
-    }
+    if (!userId) { Alert.alert('Error', 'No se pudo identificar tu usuario'); return; }
+    if (prediccionEnviada) { Alert.alert('Ya predijiste', 'Solo puedes enviar una predicción por partido'); return; }
 
     setSubmitting(true);
     try {
@@ -135,35 +132,31 @@ export default function MundialScreen() {
         mailes_apostados: 0,
         fase: PARTIDO.fase,
       });
-
       if (error) throw error;
-
       setPrediccionEnviada(true);
-      Alert.alert(
-        '¡Predicción confirmada! ⚽',
-        `${PARTIDO.local.nombre} ${golesLocal} - ${golesVisitante} ${PARTIDO.visitante.nombre}\n\nGanarás hasta ${(PARTIDO.recompensas.marcadorExacto + (rachaActiva ? PARTIDO.recompensas.rachaBono : 0)).toLocaleString()} mAiles si aciertas.`,
-        [{ text: 'Perfecto', style: 'default' }]
-      );
-    } catch (err: any) {
-      // Si la tabla no existe aún, mostrar confirmación de todas formas (demo)
+      Alert.alert('¡Predicción confirmada! ⚽', `${PARTIDO.local.nombre} ${golesLocal} - ${golesVisitante} ${PARTIDO.visitante.nombre}\n\nGanarás hasta ${(PARTIDO.recompensas.marcadorExacto + (rachaActiva ? PARTIDO.recompensas.rachaBono : 0)).toLocaleString()} mAiles si aciertas.`, [{ text: 'Perfecto', style: 'default' }]);
+    } catch {
       setPrediccionEnviada(true);
-      Alert.alert(
-        '¡Predicción registrada! ⚽',
-        `${PARTIDO.local.nombre} ${golesLocal} - ${golesVisitante} ${PARTIDO.visitante.nombre}`,
-      );
+      Alert.alert('¡Predicción registrada! ⚽', `${PARTIDO.local.nombre} ${golesLocal} - ${golesVisitante} ${PARTIDO.visitante.nombre}`);
     } finally {
       setSubmitting(false);
     }
   }
 
-  const totalRecompensa = PARTIDO.recompensas.marcadorExacto + (rachaActiva ? PARTIDO.recompensas.rachaBono : 0);
+  const FORMA_COLOR: Record<'G' | 'E' | 'P', string> = {
+    G: colors.formaWin,
+    E: colors.formaDraw,
+    P: colors.formaLoss,
+  };
+
+  const s = getStyles(colors);
 
   return (
     <SafeAreaView style={s.root}>
-      {/* ── Top Nav ── */}
+      {/* Top Nav */}
       <View style={s.topNav}>
         <View style={s.topNavLeft}>
-          <TouchableOpacity onPress={() => router.replace('/(tabs)/index')} style={s.backBtn}>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={s.backBtn}>
             <Text style={s.backIcon}>←</Text>
           </TouchableOpacity>
           <View>
@@ -182,16 +175,14 @@ export default function MundialScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={80}
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={s.scroll}
-        >
-          {/* ── Hero: Partido ── */}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+
+          {/* Hero Card */}
           <View style={s.heroCard}>
-            {/* Countdown badge */}
-            <View style={s.countdownBadge}>
+            {/* Countdown badge — animado */}
+            <Animated.View style={[s.countdownBadge, { opacity: pulseAnim }]}>
               <Text style={s.countdownText}>⏱ Predicción cierra en {PARTIDO.cierrePrediccion}</Text>
-            </View>
+            </Animated.View>
 
             {/* Teams */}
             <View style={s.teamsRow}>
@@ -217,19 +208,14 @@ export default function MundialScreen() {
             <View style={s.matchInfoRow}>
               <Text style={s.matchEstadio}>{PARTIDO.estadio}</Text>
               <Text style={s.matchFecha}>{PARTIDO.fecha} · {PARTIDO.hora}</Text>
-              <TouchableOpacity
-                style={s.predecirBtn}
-                onPress={() => setMostrarPrediccion(true)}
-              >
+              <TouchableOpacity style={s.predecirBtn} onPress={() => setMostrarPrediccion(true)}>
                 <Text style={s.predecirBtnText}>⚽ Predecir resultado</Text>
               </TouchableOpacity>
               <Text style={s.matchQuote}>"Analiza los datos y decide tú"</Text>
             </View>
           </View>
 
-          {/* ── Stats Bento ── */}
-
-          {/* Forma reciente */}
+          {/* Bento: Forma reciente */}
           <View style={s.bentoCard}>
             <Text style={s.bentoLabel}>FORMA RECIENTE</Text>
             <View style={s.formaRow}>
@@ -254,7 +240,7 @@ export default function MundialScreen() {
             </View>
           </View>
 
-          {/* FIFA Ranking + Goles */}
+          {/* Bento: FIFA Ranking + Goles */}
           <View style={s.bentoRow}>
             <View style={[s.bentoCard, s.bentoHalf]}>
               <Text style={s.bentoLabel}>FIFA RANKING</Text>
@@ -274,9 +260,9 @@ export default function MundialScreen() {
             </View>
           </View>
 
-          {/* Jugadores Clave */}
+          {/* Bento: Jugadores Clave */}
           <View style={s.bentoCard}>
-            <Text style={s.bentoLabel}>JUGADORES CLAVE</Text>
+            <Text style={s.bentoLabel}>JUGADORES CLAVE 🏆</Text>
             <View style={s.jugadoresRow}>
               <View style={s.jugadorLeft}>
                 <View style={s.jugadorAvatar}>
@@ -290,132 +276,109 @@ export default function MundialScreen() {
               <View style={s.jugadorRight}>
                 <View>
                   <Text style={[s.jugadorNombre, { textAlign: 'right', opacity: 0.7 }]}>{PARTIDO.visitante.jugadorClave.nombre}</Text>
-                  <Text style={[s.jugadorStats, { textAlign: 'right', color: '#8c90a1' }]}>{PARTIDO.visitante.jugadorClave.stats}</Text>
+                  <Text style={[s.jugadorStats, { textAlign: 'right' }]}>{PARTIDO.visitante.jugadorClave.stats}</Text>
                 </View>
-                <View style={[s.jugadorAvatar, { borderColor: '#424655' }]}>
+                <View style={[s.jugadorAvatar, { borderColor: colors.borderStrong }]}>
                   <Text style={s.jugadorEmoji}>{PARTIDO.visitante.bandera}</Text>
                 </View>
               </View>
             </View>
           </View>
 
-          {/* H2H */}
+          {/* Bento: H2H */}
           <View style={s.bentoCard}>
             <Text style={s.bentoLabel}>CARA A CARA (H2H)</Text>
             <View style={s.h2hBar}>
-              <View style={[s.h2hSegment, { flex: PARTIDO.h2h.ganados, backgroundColor: '#b2c5ff' }]} />
-              <View style={[s.h2hSegment, { flex: PARTIDO.h2h.empates, backgroundColor: '#424655' }]} />
-              <View style={[s.h2hSegment, { flex: PARTIDO.h2h.perdidos, backgroundColor: '#2a3548' }]} />
+              <View style={[s.h2hSegment, { flex: PARTIDO.h2h.ganados, backgroundColor: colors.primary }]} />
+              <View style={[s.h2hSegment, { flex: PARTIDO.h2h.empates, backgroundColor: colors.textMuted }]} />
+              <View style={[s.h2hSegment, { flex: PARTIDO.h2h.perdidos, backgroundColor: colors.borderMedium }]} />
             </View>
             <View style={s.h2hLabels}>
               <Text style={s.h2hLabel}>{PARTIDO.h2h.ganados} Ganados</Text>
-              <Text style={[s.h2hLabel, { color: '#8c90a1' }]}>{PARTIDO.h2h.empates} Empates</Text>
-              <Text style={[s.h2hLabel, { color: '#424655' }]}>{PARTIDO.h2h.perdidos} Perdidos</Text>
+              <Text style={[s.h2hLabel, { color: colors.textSecondary }]}>{PARTIDO.h2h.empates} Empates</Text>
+              <Text style={[s.h2hLabel, { color: colors.textMuted }]}>{PARTIDO.h2h.perdidos} Perdidos</Text>
             </View>
           </View>
 
-          {/* Espacio para sticky bottom */}
           <View style={{ height: 260 }} />
         </ScrollView>
 
-        {/* ── Sticky Bottom: Predicción ── */}
+        {/* Sticky Bottom: Predicción */}
         {mostrarPrediccion && (
-        <View style={s.stickyBottom}>
-          <TouchableOpacity
-            onPress={() => setMostrarPrediccion(false)}
-            style={{ position: 'absolute', top: 12, right: 16, zIndex: 10, width: 28, height: 28, borderRadius: 14, backgroundColor: '#1f2a3d', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ color: '#8c90a1', fontSize: 16, fontWeight: '700' }}>✕</Text>
-          </TouchableOpacity>
-          {/* Steppers */}
-          <View style={s.steppersRow}>
-            {/* Local */}
-            <View style={s.stepperCol}>
-              <Text style={s.stepperFlag}>{PARTIDO.local.bandera}</Text>
-              <View style={s.stepperBox}>
-                <TouchableOpacity
-                  style={s.stepperBtn}
-                  onPress={() => !prediccionEnviada && setGolesLocal(Math.max(0, golesLocal - 1))}
-                  disabled={prediccionEnviada}
-                >
-                  <Text style={s.stepperBtnText}>−</Text>
-                </TouchableOpacity>
-                <Text style={s.stepperValue}>{golesLocal}</Text>
-                <TouchableOpacity
-                  style={s.stepperBtn}
-                  onPress={() => !prediccionEnviada && setGolesLocal(golesLocal + 1)}
-                  disabled={prediccionEnviada}
-                >
-                  <Text style={s.stepperBtnText}>+</Text>
-                </TouchableOpacity>
+          <View style={s.stickyBottom}>
+            <TouchableOpacity
+              onPress={() => setMostrarPrediccion(false)}
+              style={s.closeBtn}
+            >
+              <Text style={s.closeBtnText}>✕</Text>
+            </TouchableOpacity>
+
+            <View style={s.steppersRow}>
+              <View style={s.stepperCol}>
+                <Text style={s.stepperFlag}>{PARTIDO.local.bandera}</Text>
+                <View style={s.stepperBox}>
+                  <TouchableOpacity style={s.stepperBtn} onPress={() => !prediccionEnviada && setGolesLocal(Math.max(0, golesLocal - 1))} disabled={prediccionEnviada}>
+                    <Text style={s.stepperBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={s.stepperValue}>{golesLocal}</Text>
+                  <TouchableOpacity style={s.stepperBtn} onPress={() => !prediccionEnviada && setGolesLocal(golesLocal + 1)} disabled={prediccionEnviada}>
+                    <Text style={s.stepperBtnText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Text style={s.stepperDash}>—</Text>
+
+              <View style={s.stepperCol}>
+                <Text style={s.stepperFlag}>{PARTIDO.visitante.bandera}</Text>
+                <View style={s.stepperBox}>
+                  <TouchableOpacity style={s.stepperBtn} onPress={() => !prediccionEnviada && setGolesVisitante(Math.max(0, golesVisitante - 1))} disabled={prediccionEnviada}>
+                    <Text style={s.stepperBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={s.stepperValue}>{golesVisitante}</Text>
+                  <TouchableOpacity style={s.stepperBtn} onPress={() => !prediccionEnviada && setGolesVisitante(golesVisitante + 1)} disabled={prediccionEnviada}>
+                    <Text style={s.stepperBtnText}>+</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
-            <Text style={s.stepperDash}>—</Text>
-
-            {/* Visitante */}
-            <View style={s.stepperCol}>
-              <Text style={s.stepperFlag}>{PARTIDO.visitante.bandera}</Text>
-              <View style={s.stepperBox}>
-                <TouchableOpacity
-                  style={s.stepperBtn}
-                  onPress={() => !prediccionEnviada && setGolesVisitante(Math.max(0, golesVisitante - 1))}
-                  disabled={prediccionEnviada}
-                >
-                  <Text style={s.stepperBtnText}>−</Text>
-                </TouchableOpacity>
-                <Text style={s.stepperValue}>{golesVisitante}</Text>
-                <TouchableOpacity
-                  style={s.stepperBtn}
-                  onPress={() => !prediccionEnviada && setGolesVisitante(golesVisitante + 1)}
-                  disabled={prediccionEnviada}
-                >
-                  <Text style={s.stepperBtnText}>+</Text>
-                </TouchableOpacity>
+            <View style={s.rewardsCard}>
+              <View style={s.rewardRow}>
+                <Text style={s.rewardLabel}>Marcador exacto</Text>
+                <Text style={s.rewardGold}>+{PARTIDO.recompensas.marcadorExacto.toLocaleString()} mAiles</Text>
               </View>
+              <View style={s.rewardRow}>
+                <Text style={s.rewardLabel}>Ganador correcto</Text>
+                <Text style={s.rewardBlue}>+{PARTIDO.recompensas.ganadorCorrecto} mAiles</Text>
+              </View>
+              {rachaActiva && (
+                <View style={[s.rewardRow, s.rewardBorder]}>
+                  <Text style={s.rewardRacha}>Racha activa 🔥</Text>
+                  <Text style={s.rewardRacha}>+{PARTIDO.recompensas.rachaBono} mAiles extra</Text>
+                </View>
+              )}
             </View>
+
+            <TouchableOpacity
+              style={[s.ctaBtn, prediccionEnviada && s.ctaBtnDone]}
+              onPress={confirmarPrediccion}
+              disabled={prediccionEnviada || submitting}
+              activeOpacity={0.85}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#002b73" />
+              ) : (
+                <Text style={[s.ctaBtnText, prediccionEnviada && { color: colors.primary }]}>
+                  {prediccionEnviada ? `✓ Predicción enviada · ${golesLocal}-${golesVisitante}` : 'Confirmar predicción ⭐'}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
-
-          {/* Rewards preview */}
-          <View style={s.rewardsCard}>
-            <View style={s.rewardRow}>
-              <Text style={s.rewardLabel}>Marcador exacto</Text>
-              <Text style={s.rewardGold}>+{PARTIDO.recompensas.marcadorExacto.toLocaleString()} mAiles</Text>
-            </View>
-            <View style={s.rewardRow}>
-              <Text style={s.rewardLabel}>Ganador correcto</Text>
-              <Text style={s.rewardBlue}>+{PARTIDO.recompensas.ganadorCorrecto} mAiles</Text>
-            </View>
-            {rachaActiva && (
-              <View style={[s.rewardRow, s.rewardBorder]}>
-                <Text style={s.rewardRacha}>Racha activa 🔥</Text>
-                <Text style={s.rewardRacha}>+{PARTIDO.recompensas.rachaBono} mAiles extra</Text>
-              </View>
-            )}
-          </View>
-
-          {/* CTA */}
-          <TouchableOpacity
-            style={[s.ctaBtn, prediccionEnviada && s.ctaBtnDone]}
-            onPress={confirmarPrediccion}
-            disabled={prediccionEnviada || submitting}
-            activeOpacity={0.85}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#002b73" />
-            ) : (
-              <Text style={s.ctaBtnText}>
-                {prediccionEnviada
-                  ? `✓ Predicción enviada · ${golesLocal}-${golesVisitante}`
-                  : 'Confirmar predicción ⭐'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
         )}
       </KeyboardAvoidingView>
 
-      {/* ── FAB Chatbot ── */}
+      {/* FAB Chatbot */}
       {!mostrarPrediccion && (
         <TouchableOpacity style={s.chatFab} onPress={() => setChatbotVisible(true)}>
           <Text style={s.chatFabIcon}>🤖</Text>
@@ -424,204 +387,190 @@ export default function MundialScreen() {
 
       <ChatbotModal visible={chatbotVisible} onClose={() => setChatbotVisible(false)} />
 
-      {/* ── Bottom Nav ── */}
-      <View style={s.bottomNav}>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/index')}>
-          <Text style={s.navIcon}>🏠</Text>
-          <Text style={s.navLabel}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/banco')}>
-          <Text style={s.navIcon}>🏦</Text>
-          <Text style={s.navLabel}>Banco</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navCenter}>
-          <View style={[s.navCenterBtn, s.navCenterBtnActive]}>
-            <Text style={s.navCenterIcon}>⚽</Text>
-          </View>
-          <Text style={s.navCenterLabelActive}>Mundial</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/grupo')}>
-          <Text style={s.navIcon}>👥</Text>
-          <Text style={s.navLabel}>Grupo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/perfil')}>
-          <Text style={s.navIcon}>👤</Text>
-          <Text style={s.navLabel}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNav active="mundial" />
     </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#071325' },
-  scroll: { paddingHorizontal: 16, paddingTop: 8 },
+function getStyles(colors: ReturnType<typeof import('../../context/ThemeContext').useTheme>['colors']) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.background },
+    scroll: { paddingHorizontal: 16, paddingTop: 8 },
 
-  // Top Nav
-  topNav: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 14,
-    backgroundColor: '#071325', borderBottomWidth: 0.5, borderBottomColor: '#1f2a3d',
-  },
-  topNavLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#101c2e', alignItems: 'center', justifyContent: 'center' },
-  backIcon: { color: '#b2c5ff', fontSize: 18, fontWeight: '700' },
-  topNavTitle: { color: '#b2c5ff', fontSize: 18, fontWeight: '800' },
-  topNavSub: { color: 'rgba(215,227,252,0.5)', fontSize: 10, fontWeight: '500', marginTop: 1 },
-  topNavRight: { alignItems: 'flex-end' },
-  ligaText: { color: '#b2c5ff', fontSize: 12, fontWeight: '700' },
-  medalText: { color: '#d7e3fc', fontSize: 10, fontWeight: '500' },
+    topNav: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingHorizontal: 20, paddingVertical: 14,
+      backgroundColor: colors.background,
+      borderBottomWidth: 0.5, borderBottomColor: colors.borderMedium,
+    },
+    topNavLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    backBtn: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: colors.backgroundSecondary,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    backIcon: { color: colors.primary, fontSize: 18, fontWeight: '700' },
+    topNavTitle: { color: colors.primary, fontSize: 18, fontWeight: '800' },
+    topNavSub: { color: colors.textSecondary, fontSize: 10, fontWeight: '500', marginTop: 1 },
+    topNavRight: { alignItems: 'flex-end' },
+    ligaText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+    medalText: { color: colors.textPrimary, fontSize: 10, fontWeight: '500' },
 
-  // Hero Card
-  heroCard: {
-    backgroundColor: '#101c2e', borderRadius: 20, padding: 20,
-    marginBottom: 12, borderWidth: 0.5, borderColor: '#1f2a3d',
-    shadowColor: '#b2c5ff', shadowOpacity: 0.08, shadowRadius: 20,
-  },
-  countdownBadge: {
-    alignSelf: 'flex-end',
-    backgroundColor: 'rgba(255,214,91,0.1)', borderWidth: 1, borderColor: 'rgba(255,214,91,0.2)',
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginBottom: 16,
-  },
-  countdownText: { color: '#ffd65b', fontSize: 10, fontWeight: '700' },
-  teamsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  teamCol: { alignItems: 'center', gap: 8, flex: 1 },
-  flagCircle: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: '#2a3548',
-  },
-  flagEmoji: { fontSize: 44 },
-  teamName: { color: '#d7e3fc', fontSize: 16, fontWeight: '800', textAlign: 'center' },
-  vsCol: { alignItems: 'center', gap: 4 },
-  vsText: { color: '#424655', fontSize: 11, fontWeight: '600' },
-  vsDivider: { width: 24, height: 1, backgroundColor: '#424655' },
-  matchInfoRow: { alignItems: 'center', gap: 2 },
-  matchEstadio: { color: '#8c90a1', fontSize: 11, fontWeight: '500' },
-  matchFecha: { color: 'rgba(215,227,252,0.5)', fontSize: 10 },
-  matchQuote: { color: '#ffb59d', fontSize: 11, fontStyle: 'italic', marginTop: 8 },
+    // Hero Card — premium
+    heroCard: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 20, padding: 20, marginBottom: 12,
+      borderWidth: 0.5, borderColor: colors.borderMedium,
+      shadowColor: colors.shadowColorBlue,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 1,
+      shadowRadius: 20,
+      elevation: 6,
+    },
+    countdownBadge: {
+      alignSelf: 'flex-end',
+      backgroundColor: colors.errorDim,
+      borderWidth: 1, borderColor: colors.error,
+      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginBottom: 16,
+    },
+    countdownText: { color: colors.error, fontSize: 10, fontWeight: '700' },
+    teamsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+    teamCol: { alignItems: 'center', gap: 8, flex: 1 },
+    flagCircle: {
+      width: 64, height: 64, borderRadius: 32,
+      backgroundColor: colors.cardBackground,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: colors.borderMedium,
+    },
+    flagEmoji: { fontSize: 44 },
+    teamName: { color: colors.textPrimary, fontSize: 16, fontWeight: '800', textAlign: 'center' },
+    vsCol: { alignItems: 'center', gap: 4 },
+    vsText: { color: colors.textMuted, fontSize: 11, fontWeight: '600' },
+    vsDivider: { width: 24, height: 1, backgroundColor: colors.borderStrong },
+    matchInfoRow: { alignItems: 'center', gap: 2 },
+    matchEstadio: { color: colors.textSecondary, fontSize: 11, fontWeight: '500' },
+    matchFecha: { color: colors.textSecondary, fontSize: 10 },
+    matchQuote: { color: colors.warning, fontSize: 11, fontStyle: 'italic', marginTop: 8 },
+    predecirBtn: {
+      backgroundColor: colors.gold,
+      borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12, marginTop: 12,
+      shadowColor: colors.goldShadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 1,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    predecirBtnText: { color: colors.textOnGold, fontWeight: '800', fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  // Bento
-  bentoCard: {
-    backgroundColor: '#101c2e', borderRadius: 16, padding: 16,
-    marginBottom: 10, borderWidth: 0.5, borderColor: '#1f2a3d',
-  },
-  bentoRow: { flexDirection: 'row', gap: 10, marginBottom: 0 },
-  bentoHalf: { flex: 1, marginBottom: 10 },
-  bentoLabel: { color: '#8c90a1', fontSize: 9, fontWeight: '700', letterSpacing: 1.2, marginBottom: 10 },
+    // Bento
+    bentoCard: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 16, padding: 16, marginBottom: 10,
+      borderWidth: 0.5, borderColor: colors.borderMedium,
+    },
+    bentoRow: { flexDirection: 'row', gap: 10 },
+    bentoHalf: { flex: 1, marginBottom: 10 },
+    bentoLabel: { color: colors.textSecondary, fontSize: 9, fontWeight: '700', letterSpacing: 1.2, marginBottom: 10 },
 
-  // Forma
-  formaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  formaDots: { flexDirection: 'row', gap: 6 },
-  dot: { width: 12, height: 12, borderRadius: 6 },
-  rachaRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  rachaBadge: { backgroundColor: 'rgba(178,197,255,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  rachaBadgeMuted: { backgroundColor: '#1f2a3d' },
-  rachaBadgeText: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
-  rachaBadgeTextMuted: { color: '#8c90a1', fontSize: 9, fontWeight: '700' },
+    formaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+    formaDots: { flexDirection: 'row', gap: 6 },
+    dot: { width: 12, height: 12, borderRadius: 6 },
+    rachaRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    rachaBadge: {
+      backgroundColor: colors.primaryDim,
+      paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+    },
+    rachaBadgeMuted: { backgroundColor: colors.cardBackground },
+    rachaBadgeText: { color: colors.primary, fontSize: 9, fontWeight: '700' },
+    rachaBadgeTextMuted: { color: colors.textSecondary, fontSize: 9, fontWeight: '700' },
 
-  // Ranking
-  rankRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 4 },
-  rankBig: { color: '#d7e3fc', fontSize: 24, fontWeight: '800' },
-  rankVs: { color: '#424655', fontSize: 10 },
-  rankSmall: { color: '#8c90a1', fontSize: 18, fontWeight: '700' },
+    rankRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 4 },
+    rankBig: { color: colors.textPrimary, fontSize: 24, fontWeight: '800' },
+    rankVs: { color: colors.textMuted, fontSize: 10 },
+    rankSmall: { color: colors.textSecondary, fontSize: 18, fontWeight: '700' },
 
-  // Jugadores
-  jugadoresRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  jugadorLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  jugadorRight: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end' },
-  jugadorAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: 'rgba(178,197,255,0.3)', backgroundColor: '#1f2a3d', alignItems: 'center', justifyContent: 'center' },
-  jugadorEmoji: { fontSize: 22 },
-  jugadorNombre: { color: '#d7e3fc', fontSize: 13, fontWeight: '700' },
-  jugadorStats: { color: '#b2c5ff', fontSize: 10, marginTop: 1 },
+    jugadoresRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    jugadorLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    jugadorRight: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end' },
+    jugadorAvatar: {
+      width: 40, height: 40, borderRadius: 20,
+      borderWidth: 2, borderColor: colors.primaryBorder,
+      backgroundColor: colors.cardBackground,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    jugadorEmoji: { fontSize: 22 },
+    jugadorNombre: { color: colors.textPrimary, fontSize: 13, fontWeight: '700' },
+    jugadorStats: { color: colors.primary, fontSize: 10, marginTop: 1 },
 
-  // H2H
-  h2hBar: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
-  h2hSegment: { height: '100%' },
-  h2hLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  h2hLabel: { color: '#b2c5ff', fontSize: 10, fontWeight: '600' },
+    h2hBar: { flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
+    h2hSegment: { height: '100%' },
+    h2hLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+    h2hLabel: { color: colors.primary, fontSize: 10, fontWeight: '600' },
 
-  // FAB Chatbot
-  chatFab: {
-    position: 'absolute',
-    bottom: 80,
-    right: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#1a2740',
-    borderWidth: 1.5,
-    borderColor: '#b2c5ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#b2c5ff',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  chatFabIcon: { fontSize: 24 },
+    chatFab: {
+      position: 'absolute', bottom: 80, right: 20,
+      width: 52, height: 52, borderRadius: 26,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1.5, borderColor: colors.primary,
+      alignItems: 'center', justifyContent: 'center',
+      shadowColor: colors.shadowColorBlue,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 1,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    chatFabIcon: { fontSize: 24 },
 
-  // Sticky Bottom
-  stickyBottom: {
-    position: 'absolute', bottom: 72, left: 0, right: 0,
-    backgroundColor: 'rgba(7,19,37,0.97)',
-    borderTopWidth: 0.5, borderTopColor: '#1f2a3d',
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingHorizontal: 20, paddingTop: 18, paddingBottom: 12,
-  },
-  steppersRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  stepperCol: { alignItems: 'center', gap: 8 },
-  stepperFlag: { fontSize: 28 },
-  stepperBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1f2a3d', borderRadius: 12, padding: 4 },
-  stepperBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  stepperBtnText: { color: '#b2c5ff', fontSize: 22, fontWeight: '700' },
-  stepperValue: { color: '#d7e3fc', fontSize: 24, fontWeight: '800', width: 40, textAlign: 'center' },
-  stepperDash: { color: '#424655', fontSize: 28, fontWeight: '200' },
-  rewardsCard: { backgroundColor: 'rgba(3,14,32,0.5)', borderRadius: 14, padding: 12, marginBottom: 12 },
-  rewardRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  rewardBorder: { borderTopWidth: 0.5, borderTopColor: '#1f2a3d', paddingTop: 8, marginTop: 4 },
-  rewardLabel: { color: '#8c90a1', fontSize: 11 },
-  rewardGold: { color: '#ffd65b', fontSize: 11, fontWeight: '700' },
-  rewardBlue: { color: '#b2c5ff', fontSize: 11, fontWeight: '700' },
-  rewardRacha: { color: '#ffb59d', fontSize: 11, fontWeight: '700' },
-  ctaBtn: {
-    height: 52, borderRadius: 14,
-    backgroundColor: '#b2c5ff',
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#5b8cff', shadowOpacity: 0.3, shadowRadius: 12,
-  },
-  ctaBtnDone: { backgroundColor: '#1f2a3d', borderWidth: 1, borderColor: '#b2c5ff' },
-  ctaBtnText: { color: '#002b73', fontSize: 15, fontWeight: '800' },
+    stickyBottom: {
+      position: 'absolute', bottom: 72, left: 0, right: 0,
+      backgroundColor: colors.background,
+      borderTopWidth: 0.5, borderTopColor: colors.borderMedium,
+      borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      paddingHorizontal: 20, paddingTop: 18, paddingBottom: 12,
+    },
+    closeBtn: {
+      position: 'absolute', top: 12, right: 16, zIndex: 10,
+      width: 28, height: 28, borderRadius: 14,
+      backgroundColor: colors.cardBackground,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    closeBtnText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
+    steppersRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+    stepperCol: { alignItems: 'center', gap: 8 },
+    stepperFlag: { fontSize: 28 },
+    stepperBox: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: colors.cardBackground, borderRadius: 12, padding: 4,
+    },
+    stepperBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    stepperBtnText: { color: colors.primary, fontSize: 22, fontWeight: '700' },
+    stepperValue: { color: colors.textPrimary, fontSize: 24, fontWeight: '800', width: 40, textAlign: 'center' },
+    stepperDash: { color: colors.textMuted, fontSize: 28, fontWeight: '200' },
+    rewardsCard: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 14, padding: 12, marginBottom: 12,
+    },
+    rewardRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    rewardBorder: { borderTopWidth: 0.5, borderTopColor: colors.borderMedium, paddingTop: 8, marginTop: 4 },
+    rewardLabel: { color: colors.textSecondary, fontSize: 11 },
+    rewardGold: { color: colors.gold, fontSize: 11, fontWeight: '700' },
+    rewardBlue: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+    rewardRacha: { color: colors.warning, fontSize: 11, fontWeight: '700' },
+    ctaBtn: {
+      height: 52, borderRadius: 16,
+      backgroundColor: colors.gold,
+      alignItems: 'center', justifyContent: 'center',
+      shadowColor: colors.goldShadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 1,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    ctaBtnDone: {
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1, borderColor: colors.primary,
+    },
+    ctaBtnText: { color: colors.textOnGold, fontSize: 15, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  // Bottom Nav
-  bottomNav: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: 'rgba(7,19,37,0.97)', flexDirection: 'row',
-    justifyContent: 'space-around', alignItems: 'center',
-    paddingVertical: 10, paddingBottom: 20,
-    borderTopWidth: 0.5, borderTopColor: '#1f2a3d',
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    height: 72,
-  },
-  navItem: { alignItems: 'center', gap: 2 },
-  navIcon: { fontSize: 22, opacity: 0.45 },
-  navLabel: { color: '#d7e3fc', fontSize: 9, fontWeight: '500', opacity: 0.45 },
-  navCenter: { alignItems: 'center', marginTop: -18 },
-  navCenterBtn: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#1f2a3d', alignItems: 'center', justifyContent: 'center', marginBottom: 2, borderWidth: 2.5, borderColor: '#071325' },
-  navCenterBtnActive: { backgroundColor: '#b2c5ff' },
-  navCenterIcon: { fontSize: 24 },
-  navCenterLabelActive: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
-  predecirBtn: {
-    backgroundColor: '#b2c5ff',
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginTop: 10,
-  },
-  predecirBtnText: {
-    color: '#002b73',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-});
-
+  });
+}

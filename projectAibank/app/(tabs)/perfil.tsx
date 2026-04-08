@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, Alert, RefreshControl
+  StyleSheet, SafeAreaView, Alert, RefreshControl, Animated
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
+import { useTheme } from '../../context/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
+import BottomNav from '../../components/BottomNav';
 
 export default function PerfilScreen() {
+  const { colors, theme, toggleTheme } = useTheme();
   const [userName, setUserName] = useState('');
   const [email, setEmail] = useState('');
   const [mailes, setMailes] = useState(0);
@@ -18,9 +22,10 @@ export default function PerfilScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [beneficiosOpen, setBeneficiosOpen] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Animación toggle tema
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -65,10 +70,20 @@ export default function PerfilScreen() {
     setRefreshing(false);
   }
 
-async function handleLogout() {
-  await supabase.auth.signOut();
-  router.replace('/(auth)/login');
-}
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.replace('/(auth)/login');
+  }
+
+  function handleToggleTheme() {
+    Animated.sequence([
+      Animated.timing(rotateAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(rotateAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+    ]).start();
+    toggleTheme();
+  }
+
+  const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
 
   const medallas = [1, 2, 3, 4, 5, 6];
 
@@ -90,21 +105,27 @@ async function handleLogout() {
   const estrellasFill = estrellasActuales % 5;
   const progresoPct = (estrellasFill / 5) * 100;
 
+  const s = getStyles(colors);
+
   return (
     <SafeAreaView style={s.root}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#b2c5ff" colors={['#b2c5ff']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
         }
       >
-        {/* Header */}
+        {/* Header con toggle tema */}
         <View style={s.header}>
-          <View style={s.headerLeft}>
-            <Text style={s.headerTitle}>Hola, {userName.split(' ')[0]}</Text>
-          </View>
+          <Text style={s.headerTitle}>Hola, {userName.split(' ')[0]}</Text>
           <View style={s.headerRight}>
+            {/* Toggle Tema */}
+            <Animated.View style={{ transform: [{ rotate }] }}>
+              <TouchableOpacity onPress={handleToggleTheme} style={s.themeToggleBtn}>
+                <Text style={s.themeToggleIcon}>{theme === 'dark' ? '🌙' : '☀️'}</Text>
+              </TouchableOpacity>
+            </Animated.View>
             <TouchableOpacity onPress={onRefresh} style={s.refreshBtn}>
               <Text style={{ fontSize: 16 }}>🔄</Text>
             </TouchableOpacity>
@@ -142,26 +163,18 @@ async function handleLogout() {
 
         {/* Stats Grid */}
         <View style={s.statsGrid}>
-          <View style={s.statCard}>
-            <Text style={s.statValue}>{mailes.toLocaleString()}</Text>
-            <Text style={s.statIcon}>⭐</Text>
-            <Text style={s.statLabel}>Total mAiles</Text>
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statValue}>{predicciones}</Text>
-            <Text style={s.statIcon}>⚽</Text>
-            <Text style={s.statLabel}>Predicciones</Text>
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statValue}>1</Text>
-            <Text style={s.statIcon}>📅</Text>
-            <Text style={s.statLabel}>Temporadas</Text>
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statValue}>{rachaMax}</Text>
-            <Text style={s.statIcon}>🔥</Text>
-            <Text style={s.statLabel}>Racha Máx</Text>
-          </View>
+          {[
+            { value: mailes.toLocaleString(), icon: '⭐', label: 'Total mAiles' },
+            { value: predicciones.toString(), icon: '⚽', label: 'Predicciones' },
+            { value: '1', icon: '📅', label: 'Temporadas' },
+            { value: rachaMax.toString(), icon: '🔥', label: 'Racha Máx' },
+          ].map((stat, i) => (
+            <View key={i} style={s.statCard}>
+              <Text style={s.statValue}>{stat.value}</Text>
+              <Text style={s.statIcon}>{stat.icon}</Text>
+              <Text style={s.statLabel}>{stat.label}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Medal History */}
@@ -174,24 +187,16 @@ async function handleLogout() {
             {medallas.map((m) => (
               <View key={m} style={[s.medalItem, m === medallaActual && s.medalItemActive]}>
                 {m === medallaActual ? (
-                  <View style={s.medalCircleActive}>
-                    <Text style={s.medalCircleText}>🏅</Text>
-                  </View>
+                  <View style={s.medalCircleActive}><Text style={s.medalCircleText}>🏅</Text></View>
                 ) : m < medallaActual ? (
-                  <View style={s.medalCircleDone}>
-                    <Text style={s.medalCircleText}>🏅</Text>
-                  </View>
+                  <View style={s.medalCircleDone}><Text style={s.medalCircleText}>🏅</Text></View>
                 ) : (
-                  <View style={s.medalCircleLocked}>
-                    <Text style={s.medalCircleText}>🔒</Text>
-                  </View>
+                  <View style={s.medalCircleLocked}><Text style={s.medalCircleText}>🔒</Text></View>
                 )}
-                {m === medallaActual && (
-                  <Text style={s.medalCurrentLabel}>ACTUAL</Text>
-                )}
-                {m !== medallaActual && (
-                  <Text style={s.medalLabel}>M{m}</Text>
-                )}
+                {m === medallaActual
+                  ? <Text style={s.medalCurrentLabel}>ACTUAL</Text>
+                  : <Text style={s.medalLabel}>M{m}</Text>
+                }
               </View>
             ))}
           </View>
@@ -199,10 +204,7 @@ async function handleLogout() {
 
         {/* Benefits */}
         <View style={s.sectionCard}>
-          <TouchableOpacity
-            style={s.sectionHeader}
-            onPress={() => setBeneficiosOpen(!beneficiosOpen)}
-          >
+          <TouchableOpacity style={s.sectionHeader} onPress={() => setBeneficiosOpen(!beneficiosOpen)}>
             <View style={s.benefitsTitleRow}>
               <Text style={s.benefitsIcon}>✅</Text>
               <Text style={s.sectionTitle}>Beneficios Medalla {medallaActual}</Text>
@@ -251,25 +253,29 @@ async function handleLogout() {
         {/* Settings */}
         <View style={s.sectionCard}>
           {[
-            { icon: '🔔', label: 'Notificaciones' },
-            { icon: '🔐', label: 'Seguridad' },
-            { icon: '🌐', label: 'Idioma', sub: 'Español' },
+            { ionicon: 'notifications-outline' as const, label: 'Notificaciones' },
+            { ionicon: 'lock-closed-outline' as const, label: 'Seguridad' },
+            { ionicon: 'globe-outline' as const, label: 'Idioma', sub: 'Español' },
           ].map((item) => (
             <TouchableOpacity key={item.label} style={s.settingItem}>
               <View style={s.settingLeft}>
-                <Text style={s.settingIcon}>{item.icon}</Text>
+                <View style={s.settingIconWrap}>
+                  <Ionicons name={item.ionicon} size={20} color={colors.primary} />
+                </View>
                 <View>
                   <Text style={s.settingLabel}>{item.label}</Text>
                   {item.sub && <Text style={s.settingSub}>{item.sub}</Text>}
                 </View>
               </View>
-              <Text style={s.chevron}>›</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           ))}
           <TouchableOpacity style={s.settingItem} onPress={handleLogout}>
             <View style={s.settingLeft}>
-              <Text style={s.settingIcon}>🚪</Text>
-              <Text style={[s.settingLabel, { color: '#ffb4ab' }]}>Cerrar sesión</Text>
+              <View style={[s.settingIconWrap, { backgroundColor: colors.errorDim }]}>
+                <Ionicons name="log-out-outline" size={20} color={colors.error} />
+              </View>
+              <Text style={[s.settingLabel, { color: colors.error }]}>Cerrar sesión</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -277,112 +283,147 @@ async function handleLogout() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Bottom Nav */}
-      <View style={s.bottomNav}>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)')}>
-          <Text style={s.navIcon}>🏠</Text>
-          <Text style={s.navLabel}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/banco')}>
-          <Text style={s.navIcon}>🏦</Text>
-          <Text style={s.navLabel}>Banco</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navCenter} onPress={() => router.replace('/(tabs)/mundial')}>
-          <View style={s.navCenterBtn}>
-            <Text style={s.navCenterIcon}>⚽</Text>
-          </View>
-          <Text style={s.navCenterLabel}>Mundial</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem} onPress={() => router.replace('/(tabs)/grupo')}>
-          <Text style={s.navIcon}>👥</Text>
-          <Text style={s.navLabel}>Grupo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.navItem}>
-          <Text style={s.navIconActive}>👤</Text>
-          <Text style={s.navLabelActive}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNav active="perfil" />
     </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#071325' },
-  scroll: { paddingHorizontal: 20 },
+function getStyles(colors: ReturnType<typeof import('../../context/ThemeContext').useTheme>['colors']) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.background },
+    scroll: { paddingHorizontal: 20 },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
-  headerLeft: {},
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { color: '#b2c5ff', fontSize: 20, fontWeight: '800' },
-  refreshBtn: { backgroundColor: '#1f2a3d', padding: 8, borderRadius: 12, borderWidth: 0.5, borderColor: '#424655' },
-  leagueBadge: { backgroundColor: '#1f2a3d', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5, borderColor: '#424655' },
-  leagueBadgeText: { color: '#b2c5ff', fontSize: 10, fontWeight: '700' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
+    headerTitle: { color: colors.primary, fontSize: 20, fontWeight: '800' },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    themeToggleBtn: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: colors.primaryDim,
+      borderWidth: 1, borderColor: colors.primaryBorder,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    themeToggleIcon: { fontSize: 18 },
+    refreshBtn: {
+      backgroundColor: colors.cardBackground,
+      padding: 8, borderRadius: 12,
+      borderWidth: 0.5, borderColor: colors.borderStrong,
+    },
+    leagueBadge: {
+      backgroundColor: colors.cardBackground,
+      paddingHorizontal: 12, paddingVertical: 6,
+      borderRadius: 20, borderWidth: 0.5, borderColor: colors.borderStrong,
+    },
+    leagueBadgeText: { color: colors.primary, fontSize: 10, fontWeight: '700' },
 
-  avatarSection: { alignItems: 'center', marginBottom: 24, marginTop: 8 },
-  avatarRing: { width: 120, height: 120, borderRadius: 60, padding: 3, backgroundColor: '#ffd65b', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' },
-  avatarInner: { width: 110, height: 110, borderRadius: 55, backgroundColor: '#1f2a3d', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#071325' },
-  avatarText: { color: '#b2c5ff', fontSize: 42, fontWeight: '800' },
-  medalBadge: { position: 'absolute', bottom: -8, backgroundColor: '#ffd65b', paddingHorizontal: 12, paddingVertical: 3, borderRadius: 20 },
-  medalBadgeText: { color: '#002b73', fontSize: 9, fontWeight: '800' },
-  profileName: { color: '#d7e3fc', fontSize: 22, fontWeight: '800', marginBottom: 4 },
-  profileEmail: { color: '#8c90a1', fontSize: 13, marginBottom: 4 },
-  profileSince: { color: '#424655', fontSize: 12 },
+    avatarSection: { alignItems: 'center', marginBottom: 24, marginTop: 8 },
+    avatarRing: {
+      width: 120, height: 120, borderRadius: 60,
+      padding: 3, backgroundColor: colors.gold,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 16, position: 'relative',
+      shadowColor: colors.goldShadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 1,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    avatarInner: {
+      width: 110, height: 110, borderRadius: 55,
+      backgroundColor: colors.cardBackground,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 3, borderColor: colors.background,
+    },
+    avatarText: { color: colors.primary, fontSize: 42, fontWeight: '800' },
+    medalBadge: {
+      position: 'absolute', bottom: -8,
+      backgroundColor: colors.gold,
+      paddingHorizontal: 12, paddingVertical: 3, borderRadius: 20,
+    },
+    medalBadgeText: { color: colors.textOnGold, fontSize: 9, fontWeight: '800' },
+    profileName: { color: colors.textPrimary, fontSize: 22, fontWeight: '800', marginBottom: 4 },
+    profileEmail: { color: colors.textSecondary, fontSize: 13, marginBottom: 4 },
+    profileSince: { color: colors.textMuted, fontSize: 12 },
 
-  section: { backgroundColor: '#101c2e', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 0.5, borderColor: '#1f2a3d' },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  progressTitle: { color: '#b2c5ff', fontSize: 12, fontWeight: '600', flex: 1 },
-  progressCount: { color: '#ffd65b', fontSize: 12, fontWeight: '700' },
-  progressBar: { height: 8, backgroundColor: '#1f2a3d', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#ffd65b', borderRadius: 4 },
+    section: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 16, padding: 16, marginBottom: 12,
+      borderWidth: 0.5, borderColor: colors.borderMedium,
+    },
+    progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    progressTitle: { color: colors.primary, fontSize: 12, fontWeight: '600', flex: 1 },
+    progressCount: { color: colors.gold, fontSize: 12, fontWeight: '700' },
+    progressBar: { height: 8, backgroundColor: colors.borderMedium, borderRadius: 4, overflow: 'hidden' },
+    progressFill: { height: '100%', backgroundColor: colors.gold, borderRadius: 4 },
 
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
-  statCard: { flex: 1, minWidth: '45%', backgroundColor: '#101c2e', borderRadius: 16, padding: 16, alignItems: 'flex-start', borderWidth: 0.5, borderColor: '#1f2a3d' },
-  statValue: { color: '#d7e3fc', fontSize: 24, fontWeight: '800', marginBottom: 2 },
-  statIcon: { fontSize: 16, marginBottom: 4 },
-  statLabel: { color: '#8c90a1', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
+    statCard: {
+      flex: 1, minWidth: '45%',
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 16, padding: 16, alignItems: 'flex-start',
+      borderWidth: 0.5, borderColor: colors.borderMedium,
+    },
+    statValue: { color: colors.textPrimary, fontSize: 24, fontWeight: '800', marginBottom: 2 },
+    statIcon: { fontSize: 16, marginBottom: 4 },
+    statLabel: { color: colors.textSecondary, fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
 
-  sectionCard: { backgroundColor: '#101c2e', borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 0.5, borderColor: '#1f2a3d' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { color: '#d7e3fc', fontSize: 15, fontWeight: '700' },
-  seeAll: { color: '#b2c5ff', fontSize: 12, fontWeight: '600' },
-  chevron: { color: '#8c90a1', fontSize: 16 },
+    sectionCard: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 20, padding: 16, marginBottom: 12,
+      borderWidth: 0.5, borderColor: colors.borderMedium,
+    },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    sectionTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+    seeAll: { color: colors.primary, fontSize: 12, fontWeight: '600' },
+    chevron: { color: colors.textSecondary, fontSize: 16 },
 
-  medalsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
-  medalItem: { alignItems: 'center', gap: 4 },
-  medalItemActive: { transform: [{ scale: 1.2 }] },
-  medalCircleActive: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#ffd65b', alignItems: 'center', justifyContent: 'center' },
-  medalCircleDone: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#1f2a3d', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#ffd65b' },
-  medalCircleLocked: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#1f2a3d', alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: '#424655', opacity: 0.4 },
-  medalCircleText: { fontSize: 20 },
-  medalCurrentLabel: { color: '#ffd65b', fontSize: 8, fontWeight: '800' },
-  medalLabel: { color: '#8c90a1', fontSize: 9 },
+    medalsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
+    medalItem: { alignItems: 'center', gap: 4 },
+    medalItemActive: { transform: [{ scale: 1.2 }] },
+    medalCircleActive: {
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.gold,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    medalCircleDone: {
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.cardBackground,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1, borderColor: colors.gold,
+    },
+    medalCircleLocked: {
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.cardBackground,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 0.5, borderColor: colors.borderStrong, opacity: 0.4,
+    },
+    medalCircleText: { fontSize: 20 },
+    medalCurrentLabel: { color: colors.gold, fontSize: 8, fontWeight: '800' },
+    medalLabel: { color: colors.textSecondary, fontSize: 9 },
 
-  benefitsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  benefitsIcon: { fontSize: 16 },
-  benefitsList: { gap: 10 },
-  benefitItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  benefitCheck: { color: '#ffd65b', fontSize: 14, fontWeight: '700', marginTop: 1 },
-  benefitText: { color: '#c2c6d8', fontSize: 13, flex: 1 },
+    benefitsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    benefitsIcon: { fontSize: 16 },
+    benefitsList: { gap: 10 },
+    benefitItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    benefitCheck: { color: colors.gold, fontSize: 14, fontWeight: '700', marginTop: 1 },
+    benefitText: { color: colors.textPrimary, fontSize: 13, flex: 1 },
 
-  prizeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  prizeRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
-  prizeRowTitle: { color: '#ffd65b', fontSize: 15, fontWeight: '700' },
-  prizeRowSub: { color: '#8c90a1', fontSize: 12, marginTop: 2 },
+    prizeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    prizeRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+    prizeRowTitle: { color: colors.gold, fontSize: 15, fontWeight: '700' },
+    prizeRowSub: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
 
-  settingItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#1f2a3d' },
-  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  settingIcon: { fontSize: 20 },
-  settingLabel: { color: '#d7e3fc', fontSize: 14, fontWeight: '600' },
-  settingSub: { color: '#8c90a1', fontSize: 11, marginTop: 1 },
-
-  bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(7,19,37,0.95)', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, paddingBottom: 24, borderTopWidth: 0.5, borderTopColor: '#1f2a3d', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  navItem: { alignItems: 'center', gap: 2 },
-  navIcon: { fontSize: 22, opacity: 0.5 },
-  navIconActive: { fontSize: 22 },
-  navLabel: { color: '#d7e3fc', fontSize: 9, fontWeight: '500', opacity: 0.5 },
-  navLabelActive: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
-  navCenter: { alignItems: 'center', marginTop: -20 },
-  navCenterBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#b2c5ff', alignItems: 'center', justifyContent: 'center', marginBottom: 4, borderWidth: 3, borderColor: '#071325' },
-  navCenterIcon: { fontSize: 26 },
-  navCenterLabel: { color: '#b2c5ff', fontSize: 9, fontWeight: '700' },
-});
+    settingItem: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: colors.borderMedium,
+    },
+    settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    settingIcon: { fontSize: 20 },
+    settingIconWrap: {
+      width: 36, height: 36, borderRadius: 10,
+      backgroundColor: colors.primaryDim,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    settingLabel: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
+    settingSub: { color: colors.textSecondary, fontSize: 11, marginTop: 1 },
+  });
+}
