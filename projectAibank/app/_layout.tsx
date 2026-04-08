@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import * as Linking from 'expo-linking';
+import { ThemeProvider } from '../context/ThemeContext';
 
 export default function RootLayout() {
 
@@ -26,7 +26,6 @@ export default function RootLayout() {
     const handleDeepLink = async (event: { url: string }) => {
       const url = event.url;
       const params: Record<string, string> = {};
-
       const hashPart = url.split('#')[1];
       if (hashPart) {
         hashPart.split('&').forEach(part => {
@@ -34,7 +33,6 @@ export default function RootLayout() {
           if (key && value) params[key] = decodeURIComponent(value);
         });
       }
-
       if (params.access_token && params.refresh_token) {
         await supabase.auth.setSession({
           access_token: params.access_token,
@@ -44,7 +42,6 @@ export default function RootLayout() {
     };
 
     const linkingSub = Linking.addEventListener('url', handleDeepLink);
-
     Linking.getInitialURL().then(url => {
       if (url) handleDeepLink({ url });
     });
@@ -56,9 +53,11 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+    <ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </ThemeProvider>
   );
 }
