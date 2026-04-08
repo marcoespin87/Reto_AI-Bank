@@ -64,6 +64,14 @@ function boolToInt(val: boolean | null | undefined): number {
   return val ? 1 : 0;
 }
 
+function hasEnoughData(userData: any): boolean {
+  const gasto = Number(userData.gasto_mensual_usd) || 0;
+  const mailes = Number(userData.mailes_acumulados) || 0;
+  const transacciones = Number(userData.frecuencia_transacciones_mes) || 0;
+  const diasActivo = Number(userData.dias_activo_temporada) || 0;
+  return gasto > 0 || mailes >= 50 || transacciones >= 3 || diasActivo >= 5;
+}
+
 /** Mapea scores como 'BB' al esquema que espera el modelo: AAA|AA|A|B|C */
 function mapScore(score: string | null | undefined): string {
   if (!score) return 'B';
@@ -89,6 +97,7 @@ export default function PremiosScreen() {
   const [result, setResult] = useState<SegmentacionResult | null>(null);
   const [userName, setUserName] = useState('');
   const [ligaTier, setLigaTier] = useState('');
+  const [sinDatos, setSinDatos] = useState(false);
 
   useEffect(() => {
     fetchAndSegmentar();
@@ -96,6 +105,7 @@ export default function PremiosScreen() {
 
   const fetchAndSegmentar = useCallback(async () => {
     setError(null);
+    setSinDatos(false);
     setLoading(true);
     try {
       // 1. Usuario autenticado
@@ -128,6 +138,12 @@ export default function PremiosScreen() {
       if (userErr || !userData) throw new Error('No se pudo cargar el perfil');
 
       setUserName((userData.nombre as string)?.split(' ')[0] || 'Usuario');
+
+      // Verificar si el usuario tiene suficiente actividad para recibir un premio
+      if (!hasEnoughData(userData)) {
+        setSinDatos(true);
+        return;
+      }
 
       // 3. Medalla y estrellas actuales (desde group_members)
       const { data: memberData } = await supabase
@@ -281,8 +297,74 @@ export default function PremiosScreen() {
           </View>
         )}
 
+        {/* ── Estado: sin datos suficientes ── */}
+        {!loading && !error && sinDatos && (
+          <View style={s.sinDatosContainer}>
+            <Text style={s.sinDatosEmoji}>🏦</Text>
+            <Text style={s.sinDatosTitle}>Aún no tienes premios disponibles</Text>
+            <Text style={s.sinDatosSub}>
+              Interactúa más con AI-Bank para que el modelo pueda personalizar tu premio de temporada.
+            </Text>
+
+            {/* Cómo ganar puntos */}
+            <Text style={s.howTitle}>¿Cómo ganar mAiles y premios?</Text>
+
+            <View style={s.howCard}>
+              <Text style={s.howEmoji}>⭐</Text>
+              <View style={s.howInfo}>
+                <Text style={s.howHeading}>Gana mAiles con cada compra</Text>
+                <Text style={s.howDesc}>Por cada $100 que gastes con tu tarjeta AI-Bank obtienes <Text style={s.howHighlight}>10 mAiles</Text>.</Text>
+              </View>
+            </View>
+
+            <View style={s.howCard}>
+              <Text style={s.howEmoji}>🃏</Text>
+              <View style={s.howInfo}>
+                <Text style={s.howHeading}>Cromos del álbum FIFA 2026</Text>
+                <Text style={s.howDesc}>Por cada <Text style={s.howHighlight}>$20 gastados</Text> obtienes un cromo aleatorio. ¡Colecciónalos todos!</Text>
+              </View>
+            </View>
+
+            <View style={s.howCard}>
+              <Text style={s.howEmoji}>✈️</Text>
+              <View style={s.howInfo}>
+                <Text style={s.howHeading}>Premio mayor: ¡Viaje al Mundial!</Text>
+                <Text style={s.howDesc}>Si completas el álbum FIFA 2026 ganas un <Text style={s.howHighlight}>viaje todo incluido al Mundial</Text>. Vuelo, hospedaje y entradas.</Text>
+              </View>
+            </View>
+
+            {/* Medallas y descuentos */}
+            <Text style={s.howTitle}>Sube de medalla y desbloquea descuentos</Text>
+            <Text style={s.sinDatosSub}>
+              Tus mAiles te hacen subir de medalla. A mayor medalla, mayor descuento en empresas aliadas de AI-Bank:
+            </Text>
+
+            <View style={s.medallaTable}>
+              {[
+                { medalla: '🥉 Bronce', desc: '5%',  ejemplos: 'Supermaxi, Fybeca' },
+                { medalla: '🥈 Plata',  desc: '10%', ejemplos: 'KFC Ecuador, Marathon Sports' },
+                { medalla: '🥇 Oro',   desc: '15%', ejemplos: 'De Prati, Cinemark Ecuador' },
+              ].map((row) => (
+                <View key={row.medalla} style={s.medallaRow}>
+                  <View style={s.medallaLeft}>
+                    <Text style={s.medallaIcon}>{row.medalla}</Text>
+                  </View>
+                  <View style={s.medallaRight}>
+                    <Text style={s.medallaDesc}>{row.desc} descuento</Text>
+                    <Text style={s.medallaEjemplos}>{row.ejemplos}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity style={s.retryBtn} onPress={() => router.replace('/(tabs)/banco')}>
+              <Text style={s.retryBtnText}>Ir a hacer mi primera transacción</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ── Estado: resultado ── */}
-        {!loading && !error && result && (
+        {!loading && !error && !sinDatos && result && (
           <>
             {/* Tarjeta principal del premio */}
             <View style={[s.prizeCard, { borderColor: categoriaColor }]}>
@@ -520,6 +602,50 @@ const s = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1,
   },
   altBadgeText: { fontSize: 10, fontWeight: '700' },
+
+  // Sin datos
+  sinDatosContainer: {
+    paddingTop: 16, paddingBottom: 24,
+  },
+  sinDatosEmoji: { fontSize: 56, textAlign: 'center', marginBottom: 12 },
+  sinDatosTitle: {
+    color: '#d7e3fc', fontSize: 20, fontWeight: '800',
+    textAlign: 'center', marginBottom: 8,
+  },
+  sinDatosSub: {
+    color: '#8c90a1', fontSize: 13, textAlign: 'center',
+    lineHeight: 20, marginBottom: 20, paddingHorizontal: 4,
+  },
+  howTitle: {
+    color: '#b2c5ff', fontSize: 14, fontWeight: '800',
+    textTransform: 'uppercase', letterSpacing: 0.8,
+    marginBottom: 12, marginTop: 4,
+  },
+  howCard: {
+    backgroundColor: '#101c2e', borderRadius: 16, padding: 16,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    marginBottom: 10, borderWidth: 0.5, borderColor: '#1f2a3d',
+  },
+  howEmoji: { fontSize: 28, marginTop: 2 },
+  howInfo: { flex: 1 },
+  howHeading: { color: '#d7e3fc', fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  howDesc: { color: '#8c90a1', fontSize: 12, lineHeight: 18 },
+  howHighlight: { color: '#ffd65b', fontWeight: '700' },
+  medallaTable: {
+    backgroundColor: '#101c2e', borderRadius: 16,
+    overflow: 'hidden', marginBottom: 20,
+    borderWidth: 0.5, borderColor: '#1f2a3d',
+  },
+  medallaRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 14, borderBottomWidth: 0.5, borderBottomColor: '#1f2a3d',
+  },
+  medallaLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  medallaIcon: { fontSize: 18, color: '#fff' },
+  medallaTier: { color: '#8c90a1', fontSize: 11, fontWeight: '600' },
+  medallaRight: { alignItems: 'flex-end' },
+  medallaDesc: { color: '#ffd65b', fontSize: 14, fontWeight: '800' },
+  medallaEjemplos: { color: '#424655', fontSize: 10, marginTop: 2 },
 
   // Bottom Nav
   bottomNav: {
