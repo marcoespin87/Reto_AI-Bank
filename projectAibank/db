@@ -1,0 +1,279 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.economic_tiers (
+  id integer NOT NULL DEFAULT nextval('economic_tiers_id_seq'::regclass),
+  nombre character varying NOT NULL,
+  descripcion text,
+  umbral_gasto_min numeric,
+  umbral_gasto_max numeric,
+  CONSTRAINT economic_tiers_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.group_join_votes (
+  id integer NOT NULL DEFAULT nextval('group_join_votes_id_seq'::regclass),
+  group_id integer NOT NULL,
+  candidato_id integer NOT NULL,
+  votante_id integer NOT NULL,
+  voto USER-DEFINED NOT NULL,
+  fecha date NOT NULL DEFAULT CURRENT_DATE,
+  CONSTRAINT group_join_votes_pkey PRIMARY KEY (id),
+  CONSTRAINT group_join_votes_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id),
+  CONSTRAINT group_join_votes_candidato_id_fkey FOREIGN KEY (candidato_id) REFERENCES public.users(id),
+  CONSTRAINT group_join_votes_votante_id_fkey FOREIGN KEY (votante_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.group_members (
+  id integer NOT NULL DEFAULT nextval('group_members_id_seq'::regclass),
+  group_id integer NOT NULL,
+  user_id integer NOT NULL,
+  estado USER-DEFINED NOT NULL DEFAULT 'pendiente'::miembro_estado,
+  fecha_ingreso date,
+  mailes_aportados integer NOT NULL DEFAULT 0,
+  medalla_actual integer NOT NULL DEFAULT 0,
+  estrellas_actuales integer NOT NULL DEFAULT 0,
+  CONSTRAINT group_members_pkey PRIMARY KEY (id),
+  CONSTRAINT group_members_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id),
+  CONSTRAINT group_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.group_objective_progress (
+  id integer NOT NULL DEFAULT nextval('group_objective_progress_id_seq'::regclass),
+  group_id integer NOT NULL,
+  objective_id integer NOT NULL,
+  progreso_actual numeric NOT NULL DEFAULT 0,
+  completado boolean NOT NULL DEFAULT false,
+  fecha_completado date,
+  CONSTRAINT group_objective_progress_pkey PRIMARY KEY (id),
+  CONSTRAINT group_objective_progress_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id),
+  CONSTRAINT group_objective_progress_objective_id_fkey FOREIGN KEY (objective_id) REFERENCES public.liga_objectives(id)
+);
+CREATE TABLE public.groups (
+  id integer NOT NULL DEFAULT nextval('groups_id_seq'::regclass),
+  nombre character varying NOT NULL,
+  temporada_id integer NOT NULL,
+  creador_id integer NOT NULL,
+  liga_id integer NOT NULL,
+  tipo_formacion USER-DEFINED NOT NULL DEFAULT 'libre'::grupo_tipo_formacion,
+  max_miembros integer NOT NULL DEFAULT 10,
+  codigo_invitacion character varying UNIQUE,
+  nombre_grupo character varying,
+  CONSTRAINT groups_pkey PRIMARY KEY (id),
+  CONSTRAINT groups_temporada_id_fkey FOREIGN KEY (temporada_id) REFERENCES public.seasons(id),
+  CONSTRAINT groups_creador_id_fkey FOREIGN KEY (creador_id) REFERENCES public.users(id),
+  CONSTRAINT groups_liga_id_fkey FOREIGN KEY (liga_id) REFERENCES public.ligas(id)
+);
+CREATE TABLE public.liga_medals (
+  id integer NOT NULL DEFAULT nextval('liga_medals_id_seq'::regclass),
+  liga_id integer NOT NULL,
+  numero_medalla integer NOT NULL,
+  nombre_medalla character varying NOT NULL,
+  umbral_compras_por_estrella integer NOT NULL,
+  CONSTRAINT liga_medals_pkey PRIMARY KEY (id),
+  CONSTRAINT liga_medals_liga_id_fkey FOREIGN KEY (liga_id) REFERENCES public.ligas(id)
+);
+CREATE TABLE public.liga_objectives (
+  id integer NOT NULL DEFAULT nextval('liga_objectives_id_seq'::regclass),
+  liga_id integer NOT NULL,
+  nombre character varying NOT NULL,
+  descripcion text,
+  tipo USER-DEFINED NOT NULL,
+  valor_objetivo numeric NOT NULL,
+  recompensa_mailes integer NOT NULL DEFAULT 0,
+  periodo USER-DEFINED NOT NULL,
+  es_objetivo_maximo boolean NOT NULL DEFAULT false,
+  CONSTRAINT liga_objectives_pkey PRIMARY KEY (id),
+  CONSTRAINT liga_objectives_liga_id_fkey FOREIGN KEY (liga_id) REFERENCES public.ligas(id)
+);
+CREATE TABLE public.ligas (
+  id integer NOT NULL DEFAULT nextval('ligas_id_seq'::regclass),
+  season_id integer NOT NULL,
+  economic_tier_id integer NOT NULL,
+  nombre character varying NOT NULL,
+  descripcion text,
+  CONSTRAINT ligas_pkey PRIMARY KEY (id),
+  CONSTRAINT ligas_season_id_fkey FOREIGN KEY (season_id) REFERENCES public.seasons(id),
+  CONSTRAINT ligas_economic_tier_id_fkey FOREIGN KEY (economic_tier_id) REFERENCES public.economic_tiers(id)
+);
+CREATE TABLE public.match_stats (
+  id integer NOT NULL DEFAULT nextval('match_stats_id_seq'::regclass),
+  match_id integer NOT NULL,
+  equipo USER-DEFINED NOT NULL,
+  ultimos_5_resultados jsonb,
+  h2h_ganados integer NOT NULL DEFAULT 0,
+  h2h_empatados integer NOT NULL DEFAULT 0,
+  h2h_perdidos integer NOT NULL DEFAULT 0,
+  goles_anotados_temporada integer NOT NULL DEFAULT 0,
+  goles_recibidos_temporada integer NOT NULL DEFAULT 0,
+  ranking_fifa integer,
+  jugadores_destacados jsonb,
+  forma_actual character varying,
+  CONSTRAINT match_stats_pkey PRIMARY KEY (id),
+  CONSTRAINT match_stats_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.matches(id)
+);
+CREATE TABLE public.matches (
+  id integer NOT NULL DEFAULT nextval('matches_id_seq'::regclass),
+  season_id integer NOT NULL,
+  equipo_local character varying NOT NULL,
+  equipo_visitante character varying NOT NULL,
+  fecha_partido timestamp without time zone NOT NULL,
+  resultado_local integer,
+  resultado_visitante integer,
+  CONSTRAINT matches_pkey PRIMARY KEY (id),
+  CONSTRAINT matches_season_id_fkey FOREIGN KEY (season_id) REFERENCES public.seasons(id)
+);
+CREATE TABLE public.paises (
+  id integer NOT NULL DEFAULT nextval('paises_id_seq'::regclass),
+  nombre character varying NOT NULL,
+  codigo_iso character varying NOT NULL,
+  bandera_emoji character varying,
+  confederacion character varying,
+  CONSTRAINT paises_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.predictions (
+  id integer NOT NULL DEFAULT nextval('predictions_id_seq'::regclass),
+  user_id integer NOT NULL,
+  match_id integer,
+  group_id integer,
+  res_predicho_local integer,
+  res_predicho_visitante integer,
+  es_correcto boolean,
+  mailes_ganados integer NOT NULL DEFAULT 0,
+  partido_id character varying,
+  goles_local integer,
+  goles_visitante integer,
+  estado character varying DEFAULT 'pendiente'::character varying,
+  equipo_local character varying,
+  equipo_visitante character varying,
+  fase character varying,
+  mailes_apostados integer DEFAULT 0,
+  CONSTRAINT predictions_pkey PRIMARY KEY (id),
+  CONSTRAINT predictions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT predictions_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.matches(id),
+  CONSTRAINT predictions_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id)
+);
+CREATE TABLE public.rewards (
+  id integer NOT NULL DEFAULT nextval('rewards_id_seq'::regclass),
+  temporada_id integer NOT NULL,
+  liga_id integer NOT NULL,
+  nombre character varying NOT NULL,
+  descripcion text,
+  tipo USER-DEFINED NOT NULL,
+  CONSTRAINT rewards_pkey PRIMARY KEY (id),
+  CONSTRAINT rewards_temporada_id_fkey FOREIGN KEY (temporada_id) REFERENCES public.seasons(id),
+  CONSTRAINT rewards_liga_id_fkey FOREIGN KEY (liga_id) REFERENCES public.ligas(id)
+);
+CREATE TABLE public.season_winners (
+  id integer NOT NULL DEFAULT nextval('season_winners_id_seq'::regclass),
+  season_id integer NOT NULL,
+  liga_id integer NOT NULL,
+  user_id integer NOT NULL,
+  group_id integer NOT NULL,
+  reward_id integer NOT NULL,
+  fecha_asignacion date NOT NULL DEFAULT CURRENT_DATE,
+  CONSTRAINT season_winners_pkey PRIMARY KEY (id),
+  CONSTRAINT season_winners_season_id_fkey FOREIGN KEY (season_id) REFERENCES public.seasons(id),
+  CONSTRAINT season_winners_liga_id_fkey FOREIGN KEY (liga_id) REFERENCES public.ligas(id),
+  CONSTRAINT season_winners_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT season_winners_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id),
+  CONSTRAINT season_winners_reward_id_fkey FOREIGN KEY (reward_id) REFERENCES public.rewards(id)
+);
+CREATE TABLE public.seasons (
+  id integer NOT NULL DEFAULT nextval('seasons_id_seq'::regclass),
+  nombre character varying NOT NULL,
+  fecha_inicio date NOT NULL,
+  fecha_fin date NOT NULL,
+  estado USER-DEFINED NOT NULL DEFAULT 'activa'::season_estado,
+  CONSTRAINT seasons_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.sticker_paises (
+  id integer NOT NULL DEFAULT nextval('sticker_paises_id_seq'::regclass),
+  sticker_id integer NOT NULL,
+  pais_id integer NOT NULL,
+  CONSTRAINT sticker_paises_pkey PRIMARY KEY (id),
+  CONSTRAINT sticker_paises_sticker_id_fkey FOREIGN KEY (sticker_id) REFERENCES public.stickers(id),
+  CONSTRAINT sticker_paises_pais_id_fkey FOREIGN KEY (pais_id) REFERENCES public.paises(id)
+);
+CREATE TABLE public.stickers (
+  id integer NOT NULL DEFAULT nextval('stickers_id_seq'::regclass),
+  match_id integer NOT NULL,
+  nombre character varying NOT NULL,
+  imagen_url character varying,
+  rareza USER-DEFINED NOT NULL DEFAULT 'comun'::sticker_rareza,
+  CONSTRAINT stickers_pkey PRIMARY KEY (id),
+  CONSTRAINT stickers_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.matches(id)
+);
+CREATE TABLE public.transactions (
+  id integer NOT NULL DEFAULT nextval('transactions_id_seq'::regclass),
+  user_id integer NOT NULL,
+  monto numeric NOT NULL,
+  categoria character varying NOT NULL,
+  fecha date NOT NULL DEFAULT CURRENT_DATE,
+  mailes_generados integer NOT NULL DEFAULT 0,
+  tipo character varying,
+  CONSTRAINT transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT transactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_stickers (
+  id integer NOT NULL DEFAULT nextval('user_stickers_id_seq'::regclass),
+  user_id integer NOT NULL,
+  sticker_id integer NOT NULL,
+  fecha_obtencion date NOT NULL DEFAULT CURRENT_DATE,
+  origen USER-DEFINED NOT NULL,
+  CONSTRAINT user_stickers_pkey PRIMARY KEY (id),
+  CONSTRAINT user_stickers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT user_stickers_sticker_id_fkey FOREIGN KEY (sticker_id) REFERENCES public.stickers(id)
+);
+CREATE TABLE public.users (
+  id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
+  nombre character varying NOT NULL,
+  email character varying NOT NULL UNIQUE,
+  fecha_nacimiento date,
+  fecha_registro date NOT NULL DEFAULT CURRENT_DATE,
+  economic_tier_id integer,
+  mailes_acumulados integer NOT NULL DEFAULT 0,
+  mailes_canjeados integer NOT NULL DEFAULT 0,
+  saldo numeric NOT NULL DEFAULT 4280.50,
+  num_productos_bancarios integer DEFAULT 1,
+  score_crediticio character varying DEFAULT 'BB'::character varying,
+  tiene_cuenta_ahorro boolean DEFAULT true,
+  meses_sin_mora integer DEFAULT 0,
+  categoria_crediticia character varying DEFAULT 'Regular'::character varying,
+  genero character varying,
+  ciudad character varying DEFAULT 'No especificado'::character varying,
+  nivel_educacion character varying DEFAULT 'No especificado'::character varying,
+  ocupacion character varying DEFAULT 'No especificado'::character varying,
+  estado_civil character varying,
+  notificaciones_activadas boolean DEFAULT true,
+  dispositivo_preferido character varying,
+  prefers_email_notifications boolean DEFAULT true,
+  idioma_preferido character varying DEFAULT 'es'::character varying,
+  theme_preferido character varying DEFAULT 'auto'::character varying,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  pct_gasto_tecnologia double precision DEFAULT 0,
+  pct_gasto_viajes double precision DEFAULT 0,
+  pct_gasto_restaurantes double precision DEFAULT 0,
+  pct_gasto_entretenimiento double precision DEFAULT 0,
+  pct_gasto_supermercado double precision DEFAULT 0,
+  pct_gasto_salud double precision DEFAULT 0,
+  pct_gasto_educacion double precision DEFAULT 0,
+  pct_gasto_hogar double precision DEFAULT 0,
+  pct_gasto_otros double precision DEFAULT 0,
+  numero_cuenta character varying UNIQUE,
+  gasto_mensual_usd numeric DEFAULT 0,
+  frecuencia_transacciones_mes integer DEFAULT 0,
+  antiguedad_cliente_meses integer DEFAULT 0,
+  tiene_credito_activo boolean DEFAULT false,
+  predicciones_correctas_pct numeric DEFAULT 0,
+  racha_maxima_predicciones integer DEFAULT 0,
+  cromos_coleccionados integer DEFAULT 0,
+  cromos_epicos_obtenidos integer DEFAULT 0,
+  objetivos_completados integer DEFAULT 0,
+  participo_en_grupo boolean DEFAULT false,
+  rol_en_grupo character varying DEFAULT 'ninguno'::character varying,
+  votos_emitidos integer DEFAULT 0,
+  dias_activo_temporada integer DEFAULT 0,
+  edad integer,
+  usa_app_movil boolean DEFAULT true,
+  sesiones_app_semana integer DEFAULT 0,
+  compras_online_pct numeric DEFAULT 0,
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_economic_tier_id_fkey FOREIGN KEY (economic_tier_id) REFERENCES public.economic_tiers(id)
+);

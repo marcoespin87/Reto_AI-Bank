@@ -10,9 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 import BottomNav from "./BottomNav";
 import ChatbotModal from "./ChatbotModal";
-import { useTheme } from "../context/ThemeContext";
 
 export const PARTIDO = {
   id: "ecua-civ-2026",
@@ -279,19 +279,28 @@ export default function MundialUI({
               <View
                 style={[
                   s.h2hSegment,
-                  { flex: PARTIDO.h2h.ganados, backgroundColor: colors.primary },
+                  {
+                    flex: PARTIDO.h2h.ganados,
+                    backgroundColor: colors.primary,
+                  },
                 ]}
               />
               <View
                 style={[
                   s.h2hSegment,
-                  { flex: PARTIDO.h2h.empates, backgroundColor: colors.textMuted },
+                  {
+                    flex: PARTIDO.h2h.empates,
+                    backgroundColor: colors.textMuted,
+                  },
                 ]}
               />
               <View
                 style={[
                   s.h2hSegment,
-                  { flex: PARTIDO.h2h.perdidos, backgroundColor: colors.borderMedium },
+                  {
+                    flex: PARTIDO.h2h.perdidos,
+                    backgroundColor: colors.borderMedium,
+                  },
                 ]}
               />
             </View>
@@ -322,7 +331,9 @@ export default function MundialUI({
                 <View style={s.stepperBox}>
                   <TouchableOpacity
                     style={s.stepperBtn}
-                    onPress={() => onGolesLocalChange(Math.max(0, golesLocal - 1))}
+                    onPress={() =>
+                      onGolesLocalChange(Math.max(0, golesLocal - 1))
+                    }
                     disabled={prediccionEnviada}
                   >
                     <Text style={s.stepperBtnText}>−</Text>
@@ -345,7 +356,9 @@ export default function MundialUI({
                 <View style={s.stepperBox}>
                   <TouchableOpacity
                     style={s.stepperBtn}
-                    onPress={() => onGolesVisitanteChange(Math.max(0, golesVisitante - 1))}
+                    onPress={() =>
+                      onGolesVisitanteChange(Math.max(0, golesVisitante - 1))
+                    }
                     disabled={prediccionEnviada}
                   >
                     <Text style={s.stepperBtnText}>−</Text>
@@ -471,10 +484,7 @@ function getStyles(
       marginBottom: 12,
       borderWidth: 0.5,
       borderColor: colors.borderMedium,
-      shadowColor: colors.shadowColorBlue,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 1,
-      shadowRadius: 20,
+      boxShadow: `0 4px 20px ${colors.shadowColorBlue}`,
       elevation: 6,
     },
     countdownBadge: {
@@ -534,10 +544,7 @@ function getStyles(
       paddingHorizontal: 24,
       paddingVertical: 12,
       marginTop: 12,
-      shadowColor: colors.goldShadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 1,
-      shadowRadius: 8,
+      boxShadow: `0 4px 8px ${colors.goldShadow}`,
       elevation: 6,
     },
     predecirBtnText: {
@@ -652,10 +659,7 @@ function getStyles(
       borderColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: colors.shadowColorBlue,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 1,
-      shadowRadius: 12,
+      boxShadow: `0 4px 12px ${colors.shadowColorBlue}`,
       elevation: 8,
     },
     chatFabIcon: { fontSize: 24 },
@@ -748,10 +752,7 @@ function getStyles(
       backgroundColor: colors.gold,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: colors.goldShadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 1,
-      shadowRadius: 8,
+      boxShadow: `0 4px 8px ${colors.goldShadow}`,
       elevation: 6,
     },
     ctaBtnDone: {

@@ -177,7 +177,7 @@ export default function AlbumUI({
                 activeOpacity={lo_tengo ? 0.8 : 1}
               >
                 {lo_tengo ? (
-                  <>
+                  <View key={`sticker-content-${sticker.id}`}>
                     <Image
                       source={{ uri: sticker.imagen_url }}
                       style={s.stickerImage}
@@ -204,7 +204,7 @@ export default function AlbumUI({
                         <Text style={s.cantidadText}>x{cantidad}</Text>
                       </View>
                     )}
-                  </>
+                  </View>
                 ) : (
                   <View style={s.stickerLocked}>
                     <Text style={s.stickerLockedText}>?</Text>

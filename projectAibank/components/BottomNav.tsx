@@ -57,6 +57,16 @@ export default function BottomNav({ active }: BottomNavProps) {
   const { colors } = useTheme();
   const s = getStyles(colors);
 
+  const handleNavigation = (tab: (typeof TABS)[0]) => {
+    const isActive = tab.key === active;
+    if (!isActive) {
+      // Usa setTimeout para asegurar que la navegación ocurra DESPUÉS del render
+      setTimeout(() => {
+        router.replace(tab.route as any);
+      }, 0);
+    }
+  };
+
   return (
     <View style={s.bottomNav}>
       {TABS.map((tab) => {
@@ -67,15 +77,15 @@ export default function BottomNav({ active }: BottomNavProps) {
           <TouchableOpacity
             key={`nav-${tab.key}`}
             style={[s.navItem, isMundial && s.navCenter]}
-            onPress={() => !isActive && router.replace(tab.route as any)}
+            onPress={() => handleNavigation(tab)}
           >
-            {/* Contenedor estable para el botón */}
+            {/* Contenedor ESTABLE - Siempre es View (no { flex: 0 }) */}
             <View
-              style={
-                isMundial
-                  ? [s.navCenterBtn, isActive && s.navCenterBtnActive]
-                  : { flex: 0 }
-              }
+              style={[
+                s.navIconWrapper,
+                isMundial && s.navCenterBtn,
+                isMundial && isActive && s.navCenterBtnActive,
+              ]}
             >
               <Ionicons
                 name={isActive ? (tab.iconActive as any) : (tab.icon as any)}
@@ -126,6 +136,17 @@ function getStyles(
     },
     navItem: { alignItems: "center", gap: 3, flex: 1 },
     navCenter: { alignItems: "center", marginTop: -22, flex: 1 },
+    /**
+     * 🔧 ESTABLE: Contenedor consistente que SIEMPRE existe
+     * Sin cambios radicales de estructura para evitar removeChild errors
+     */
+    navIconWrapper: {
+      width: "auto",
+      height: "auto",
+      alignItems: "center",
+      justifyContent: "center",
+      flex: 0,
+    },
     navCenterBtn: {
       width: 58,
       height: 58,
@@ -136,10 +157,7 @@ function getStyles(
       marginBottom: 3,
       borderWidth: 3,
       borderColor: colors.background,
-      shadowColor: colors.shadowColorBlue,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 1,
-      shadowRadius: 8,
+      boxShadow: `0 4px 8px ${colors.shadowColorBlue}`,
       elevation: 8,
     },
     navCenterBtnActive: {

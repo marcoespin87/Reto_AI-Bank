@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
-  ActivityIndicator,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
@@ -149,19 +149,21 @@ export default function BancoUI({
 
         {/* Quick Actions */}
         <View style={s.actionsRow}>
-          {([
-            {
-              key: "transferir",
-              ionicon: "arrow-up-circle-outline",
-              label: "Transferir",
-            },
-            { key: "pagar", ionicon: "flash-outline", label: "Pagar" },
-            {
-              key: "compra",
-              ionicon: "bag-handle-outline",
-              label: "Compra online",
-            },
-          ] as const).map((action) => (
+          {(
+            [
+              {
+                key: "transferir",
+                ionicon: "arrow-up-circle-outline",
+                label: "Transferir",
+              },
+              { key: "pagar", ionicon: "flash-outline", label: "Pagar" },
+              {
+                key: "compra",
+                ionicon: "bag-handle-outline",
+                label: "Compra online",
+              },
+            ] as const
+          ).map((action) => (
             <TouchableOpacity
               key={action.key}
               style={s.actionBtn}
@@ -250,7 +252,7 @@ export default function BancoUI({
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
             {modal && (
-              <>
+              <View key={`modal-content-${modal}`}>
                 <Text style={s.modalTitle}>
                   {modalConfig[modal].icon} {modalConfig[modal].title}
                 </Text>
@@ -310,7 +312,7 @@ export default function BancoUI({
                 >
                   <Text style={s.btnCancelText}>Cancelar</Text>
                 </TouchableOpacity>
-              </>
+              </View>
             )}
           </View>
         </View>

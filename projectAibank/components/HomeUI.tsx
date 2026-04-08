@@ -10,8 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import BottomNav from "./BottomNav";
 import { useTheme } from "../context/ThemeContext";
+import BottomNav from "./BottomNav";
 
 interface Transaction {
   id: string | number;
@@ -317,7 +317,7 @@ export default function HomeUI({
               </View>
             ))
           ) : (
-            <>
+            <View key="default-transactions-wrapper">
               {defaultTransactions.map((item) => (
                 <View key={`tx-default-${item.id}`} style={s.txItem}>
                   <View style={s.txIconWrap}>
@@ -333,7 +333,7 @@ export default function HomeUI({
                   </View>
                 </View>
               ))}
-            </>
+            </View>
           )}
         </View>
 

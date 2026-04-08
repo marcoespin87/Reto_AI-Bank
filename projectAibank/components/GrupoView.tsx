@@ -1,17 +1,17 @@
 import {
-  ActivityIndicator,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import BottomNav from "./BottomNav";
 import { useTheme } from "../context/ThemeContext";
+import BottomNav from "./BottomNav";
 
 interface GrupoViewProps {
   userId: number | null;
@@ -147,7 +147,7 @@ export default function GrupoView({
             </TouchableOpacity>
           </View>
         ) : (
-          <>
+          <View key="grupo-content-wrapper">
             {/* Header */}
             <View style={s.header}>
               <View>
@@ -242,10 +242,7 @@ export default function GrupoView({
               {miembrosSorted.map((m, i) => (
                 <View
                   key={m.id}
-                  style={[
-                    s.memberItem,
-                    m.user_id === userId && s.memberItemMe,
-                  ]}
+                  style={[s.memberItem, m.user_id === userId && s.memberItemMe]}
                 >
                   <View style={s.memberLeft}>
                     <Text style={s.rankNumber}>{i + 1}</Text>
@@ -340,7 +337,7 @@ export default function GrupoView({
                 );
               })}
             </View>
-          </>
+          </View>
         )}
 
         <View style={{ height: 100 }} />
@@ -491,9 +488,8 @@ export default function GrupoView({
             >
               {gruposMatch.map((g: any) => {
                 const miembrosActivos =
-                  g.group_members?.filter(
-                    (m: any) => m.estado === "activo",
-                  ) || [];
+                  g.group_members?.filter((m: any) => m.estado === "activo") ||
+                  [];
                 const promedioMailes = Math.round(
                   miembrosActivos.reduce(
                     (sum: number, m: any) =>

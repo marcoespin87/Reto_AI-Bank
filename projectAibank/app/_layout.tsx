@@ -1,7 +1,6 @@
 import * as Linking from "expo-linking";
 import { Stack, router } from "expo-router";
 import { useEffect } from "react";
-import { ErrorBoundary } from "../components/ErrorBoundary";
 import { ThemeProvider } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
 
@@ -58,13 +57,11 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </ThemeProvider>
   );
 }

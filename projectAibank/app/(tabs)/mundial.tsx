@@ -69,10 +69,10 @@ export default function MundialScreen() {
 
       const { data: preds } = await supabase
         .from("predictions")
-        .select("estado")
+        .select("*")
         .eq("user_id", data.id)
-        .eq("estado", "correcto")
-        .order("created_at", { ascending: false })
+        .eq("es_correcto", true)
+        .order("id", { ascending: false })
         .limit(3);
 
       if (preds && preds.length >= 2) setRachaActiva(true);
