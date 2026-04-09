@@ -24,6 +24,7 @@ export default function GrupoScreen() {
   const [userMailes, setUserMailes] = useState(0);
   const [gruposMatch, setGruposMatch] = useState<any[]>([]);
   const [modalResultadoMatch, setModalResultadoMatch] = useState(false);
+  const [grupoPendiente, setGrupoPendiente] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -51,9 +52,29 @@ export default function GrupoScreen() {
       .select("group_id, estado")
       .eq("user_id", userData.id)
       .eq("estado", "activo")
-      .single();
+      .maybeSingle();
 
-    if (!memberData) return;
+    if (!memberData) {
+      // Sin grupo activo — verificar si hay solicitud pendiente
+      const { data: pendingMember } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", userData.id)
+        .eq("estado", "pendiente")
+        .maybeSingle();
+
+      if (pendingMember) {
+        const { data: pendingGrupo } = await supabase
+          .from("groups")
+          .select("id, nombre")
+          .eq("id", pendingMember.group_id)
+          .maybeSingle();
+        setGrupoPendiente(pendingGrupo || null);
+      } else {
+        setGrupoPendiente(null);
+      }
+      return;
+    }
 
     const { data: grupoData } = await supabase
       .from("groups")
@@ -214,85 +235,166 @@ export default function GrupoScreen() {
     );
   }
 
+  function cosineSimilarity(a: number[], b: number[]): number {
+    const dot = a.reduce((sum, ai, i) => sum + ai * b[i], 0);
+    const normA = Math.sqrt(a.reduce((sum, ai) => sum + ai * ai, 0));
+    const normB = Math.sqrt(b.reduce((sum, bi) => sum + bi * bi, 0));
+    if (normA === 0 || normB === 0) return 0;
+    return dot / (normA * normB);
+  }
+
   async function matchmaking() {
-    if (!userId) return;
+    console.log("[matchmaking] userId:", userId);
+    if (!userId) {
+      Alert.alert("Sin sesión", "userId es null — recarga la pantalla");
+      return;
+    }
     setLoading(true);
     setModalMatchmaking(false);
 
-    const RANGO_MAILES = 500;
+    // Normalización suave: penaliza diferencia de mAiles pero no excluye grupos
+    const MAILES_NORMALIZACION = 5000;
 
-    const { data: userData } = await supabase
+    console.log("[matchmaking] fetching user spending profile...");
+    const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("mailes_acumulados, liga_id:economic_tier_id")
+      .select(
+        `mailes_acumulados,
+        pct_gasto_tecnologia, pct_gasto_viajes, pct_gasto_restaurantes,
+        pct_gasto_entretenimiento, pct_gasto_supermercado, pct_gasto_salud,
+        pct_gasto_educacion, pct_gasto_hogar, pct_gasto_otros`,
+      )
       .eq("id", userId)
       .single();
 
-    if (!userData) {
+    console.log("[matchmaking] userData:", userData, "error:", userError);
+
+    if (userError || !userData) {
       setLoading(false);
-      Alert.alert("Error", "No se pudo obtener tu perfil");
+      Alert.alert("Error al cargar perfil", userError?.message || "Sin datos");
       return;
     }
 
-    const misMailes = userData.mailes_acumulados || 0;
-    const minMailes = misMailes - RANGO_MAILES;
-    const maxMailes = misMailes + RANGO_MAILES;
+    const ud = userData as any;
+    const misMailes = ud.mailes_acumulados || 0;
 
-    const { data: gruposDisponibles } = await supabase
+    const userVector = [
+      ud.pct_gasto_tecnologia || 0,
+      ud.pct_gasto_viajes || 0,
+      ud.pct_gasto_restaurantes || 0,
+      ud.pct_gasto_entretenimiento || 0,
+      ud.pct_gasto_supermercado || 0,
+      ud.pct_gasto_salud || 0,
+      ud.pct_gasto_educacion || 0,
+      ud.pct_gasto_hogar || 0,
+      ud.pct_gasto_otros || 0,
+    ];
+
+    console.log("[matchmaking] fetching groups...");
+    const { data: gruposDisponibles, error: gruposError } = await supabase
       .from("groups")
       .select(
-        `
-      id,
-      nombre,
-      codigo_invitacion,
-      max_miembros,
-      liga_id,
-      group_members!inner(
-        user_id,
-        estado,
-        users(mailes_acumulados)
-      )
-    `,
+        `id, nombre, codigo_invitacion, max_miembros, liga_id,
+        group_members!inner(
+          user_id, estado,
+          users(
+            mailes_acumulados,
+            pct_gasto_tecnologia, pct_gasto_viajes, pct_gasto_restaurantes,
+            pct_gasto_entretenimiento, pct_gasto_supermercado, pct_gasto_salud,
+            pct_gasto_educacion, pct_gasto_hogar, pct_gasto_otros
+          )
+        )`,
       )
       .eq("liga_id", 8)
       .neq("creador_id", userId);
+
+    console.log("[matchmaking] gruposDisponibles:", gruposDisponibles?.length, "error:", gruposError);
+
+    if (gruposError) {
+      setLoading(false);
+      Alert.alert("Error al buscar grupos", gruposError.message);
+      return;
+    }
 
     if (!gruposDisponibles || gruposDisponibles.length === 0) {
       setLoading(false);
       Alert.alert(
         "Sin grupos disponibles",
-        "No encontramos grupos con tu rango de mAiles (±500). Intenta crear uno nuevo.",
+        "No encontramos grupos disponibles. Intenta crear uno nuevo.",
       );
       return;
     }
 
-    const gruposFiltrados = gruposDisponibles.filter((g: any) => {
+    const gruposScorados: any[] = [];
+
+    for (const g of gruposDisponibles) {
       const miembrosActivos =
         g.group_members?.filter((m: any) => m.estado === "activo") || [];
-      if (miembrosActivos.length >= g.max_miembros) return false;
 
-      const yaSoyMiembro = miembrosActivos.some(
-        (m: any) => m.user_id === userId,
-      );
-      if (yaSoyMiembro) return false;
+      console.log(`[matchmaking] grupo "${g.nombre}": miembrosActivos=${miembrosActivos.length}, max=${g.max_miembros}`);
+
+      if (miembrosActivos.length >= g.max_miembros) {
+        console.log(`[matchmaking] SKIP: grupo lleno`);
+        continue;
+      }
+
+      const yaEsMiembro = miembrosActivos.some((m: any) => m.user_id === userId);
+      console.log(`[matchmaking] yaEsMiembro=${yaEsMiembro}`);
+      if (yaEsMiembro) {
+        console.log(`[matchmaking] SKIP: ya soy miembro`);
+        continue;
+      }
 
       const promedioMailes =
-        miembrosActivos.reduce((sum: number, m: any) => {
-          return sum + (m.users?.mailes_acumulados || 0);
-        }, 0) / (miembrosActivos.length || 1);
+        miembrosActivos.reduce(
+          (sum: number, m: any) => sum + (m.users?.mailes_acumulados || 0),
+          0,
+        ) / (miembrosActivos.length || 1);
 
-      return promedioMailes >= minMailes && promedioMailes <= maxMailes;
-    });
+      console.log(`[matchmaking] promedioMailes=${promedioMailes}`);
 
-    if (gruposFiltrados.length === 0) {
-      setLoading(false);
-      Alert.alert(
-        "Sin coincidencias",
-        `No hay grupos con promedio de mAiles entre ${minMailes.toLocaleString()} y ${maxMailes.toLocaleString()}.\n\nTus mAiles actuales: ${misMailes.toLocaleString()}`,
+      // Score de proximidad de mAiles (0–1): 1 = match exacto, decrece con la diferencia
+      const mailesScore = Math.max(
+        0,
+        1 - Math.abs(misMailes - promedioMailes) / MAILES_NORMALIZACION,
       );
-      return;
+
+      // Vector promedio de gastos del grupo
+      const groupVector = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+      for (const m of miembrosActivos) {
+        const u = (m.users as any) || {};
+        groupVector[0] += u.pct_gasto_tecnologia || 0;
+        groupVector[1] += u.pct_gasto_viajes || 0;
+        groupVector[2] += u.pct_gasto_restaurantes || 0;
+        groupVector[3] += u.pct_gasto_entretenimiento || 0;
+        groupVector[4] += u.pct_gasto_supermercado || 0;
+        groupVector[5] += u.pct_gasto_salud || 0;
+        groupVector[6] += u.pct_gasto_educacion || 0;
+        groupVector[7] += u.pct_gasto_hogar || 0;
+        groupVector[8] += u.pct_gasto_otros || 0;
+      }
+      const n = miembrosActivos.length || 1;
+      const avgGroupVector = groupVector.map((v) => v / n);
+
+      const spendingScore = cosineSimilarity(userVector, avgGroupVector);
+
+      const score = 0.7 * mailesScore + 0.3 * spendingScore;
+
+      gruposScorados.push({
+        ...g,
+        _score: score,
+        _mailesScore: mailesScore,
+        _spendingScore: spendingScore,
+        _promedioMailes: Math.round(promedioMailes),
+      });
     }
 
-    setGruposMatch(gruposFiltrados);
+    console.log("[matchmaking] gruposScorados final:", gruposScorados.length, gruposScorados.map(g => ({ nombre: g.nombre, score: g._score, mailes: g._promedioMailes })));
+
+    gruposScorados.sort((a, b) => b._score - a._score);
+
+    console.log("[matchmaking] mostrando modal con", gruposScorados.length, "grupos");
+    setGruposMatch(gruposScorados);
     setLoading(false);
     setModalResultadoMatch(true);
   }
@@ -421,6 +523,18 @@ export default function GrupoScreen() {
     Alert.alert("¡Listo!", "Nombre del grupo actualizado.");
   }
 
+  async function cancelarSolicitud() {
+    if (!userId || !grupoPendiente) return;
+    setLoading(true);
+    await supabase
+      .from("group_members")
+      .delete()
+      .eq("group_id", grupoPendiente.id)
+      .eq("user_id", userId);
+    setGrupoPendiente(null);
+    setLoading(false);
+  }
+
   async function compartirCodigo() {
     if (!grupo) return;
     await Share.share({
@@ -462,6 +576,8 @@ export default function GrupoScreen() {
       onAprobarMiembro={aprobarMiembro}
       onRechazarMiembro={rechazarMiembro}
       onRenombrarGrupo={renombrarGrupo}
+      grupoPendiente={grupoPendiente}
+      onCancelarSolicitud={cancelarSolicitud}
     />
   );
 }

@@ -46,6 +46,8 @@ interface GrupoViewProps {
   onAprobarMiembro: (id: number) => void;
   onRechazarMiembro: (id: number) => void;
   onRenombrarGrupo: () => void;
+  grupoPendiente: any | null;
+  onCancelarSolicitud: () => void;
 }
 
 export default function GrupoView({
@@ -81,6 +83,8 @@ export default function GrupoView({
   onAprobarMiembro,
   onRechazarMiembro,
   onRenombrarGrupo,
+  grupoPendiente,
+  onCancelarSolicitud,
 }: GrupoViewProps) {
   const { colors } = useTheme();
 
@@ -116,36 +120,62 @@ export default function GrupoView({
       >
         {/* PANTALLA SIN GRUPO */}
         {!grupo ? (
-          <View style={s.noGroupContainer}>
-            <Text style={s.noGroupIcon}>👥</Text>
-            <Text style={s.noGroupTitle}>Sin grupo activo</Text>
-            <Text style={s.noGroupSub}>
-              Crea un grupo o únete con un código
-            </Text>
-
-            <TouchableOpacity
-              style={s.btnPrimary}
-              onPress={() => setModalCrear(true)}
-            >
-              <Text style={s.btnPrimaryText}>➕ Crear grupo</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={s.btnSecondary}
-              onPress={() => setModalUnirse(true)}
-            >
-              <Text style={s.btnSecondaryText}>🔑 Unirse con código</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={s.btnSecondary}
-              onPress={() => setModalMatchmaking(true)}
-            >
-              <Text style={s.btnSecondaryText}>
-                🎯 Buscar grupo por matchmaking
+          grupoPendiente ? (
+            /* ESTADO DE ESPERA: solicitud enviada */
+            <View style={s.pendienteContainer}>
+              <Text style={s.noGroupIcon}>⏳</Text>
+              <Text style={s.noGroupTitle}>Solicitud enviada</Text>
+              <Text style={s.noGroupSub}>
+                Esperando aprobación de los miembros de
               </Text>
-            </TouchableOpacity>
-          </View>
+              <Text style={s.pendienteNombreGrupo}>{grupoPendiente.nombre}</Text>
+              <Text style={s.pendienteHint}>
+                Los miembros del grupo deben votar para aceptarte. Te
+                notificaremos cuando seas aprobado.
+              </Text>
+              <TouchableOpacity
+                style={s.btnCancelarSolicitud}
+                onPress={onCancelarSolicitud}
+                disabled={loading}
+              >
+                <Text style={s.btnCancelarSolicitudText}>
+                  Cancelar solicitud
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* ESTADO NORMAL: sin grupo */
+            <View style={s.noGroupContainer}>
+              <Text style={s.noGroupIcon}>👥</Text>
+              <Text style={s.noGroupTitle}>Sin grupo activo</Text>
+              <Text style={s.noGroupSub}>
+                Crea un grupo o únete con un código
+              </Text>
+
+              <TouchableOpacity
+                style={s.btnPrimary}
+                onPress={() => setModalCrear(true)}
+              >
+                <Text style={s.btnPrimaryText}>➕ Crear grupo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={s.btnSecondary}
+                onPress={() => setModalUnirse(true)}
+              >
+                <Text style={s.btnSecondaryText}>🔑 Unirse con código</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={s.btnSecondary}
+                onPress={() => setModalMatchmaking(true)}
+              >
+                <Text style={s.btnSecondaryText}>
+                  🎯 Buscar grupo por matchmaking
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )
         ) : (
           <View key="grupo-content-wrapper">
             {/* Header */}
@@ -449,8 +479,8 @@ export default function GrupoView({
           <View style={s.modalCard}>
             <Text style={s.modalTitle}>🎯 Matchmaking</Text>
             <Text style={s.matchmakingDesc}>
-              Buscaremos un grupo con perfiles de gasto similares al tuyo en
-              Liga Plata.
+              Analizaremos tus categorías de gasto y tus mAiles para encontrar
+              el grupo más compatible contigo en Liga Plata.
             </Text>
             <TouchableOpacity
               style={[s.btnPrimary, loading && { opacity: 0.7 }]}
@@ -477,11 +507,24 @@ export default function GrupoView({
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
             <Text style={s.modalTitle}>🎯 Grupos compatibles</Text>
-            <Text style={s.matchmakingDesc}>
-              Encontramos {gruposMatch.length} grupo
-              {gruposMatch.length > 1 ? "s" : ""} con mAiles similares a los
-              tuyos (±500).
-            </Text>
+            {gruposMatch.length === 0 ? (
+              <View style={s.sinResultadosContainer}>
+                <Text style={s.sinResultadosIcon}>🔍</Text>
+                <Text style={s.sinResultadosTitulo}>Sin grupos disponibles</Text>
+                <Text style={s.sinResultadosDesc}>
+                  No encontramos grupos activos para unirte en este momento.
+                  Puedes crear uno nuevo e invitar a tus amigos.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Text style={s.matchmakingDesc}>
+                  Encontramos {gruposMatch.length} grupo
+                  {gruposMatch.length > 1 ? "s" : ""} ordenados por afinidad de
+                  mAiles y perfil de gastos.
+                </Text>
+              </>
+            )}
             <ScrollView
               style={{ maxHeight: 300 }}
               showsVerticalScrollIndicator={false}
@@ -490,13 +533,16 @@ export default function GrupoView({
                 const miembrosActivos =
                   g.group_members?.filter((m: any) => m.estado === "activo") ||
                   [];
-                const promedioMailes = Math.round(
-                  miembrosActivos.reduce(
-                    (sum: number, m: any) =>
-                      sum + (m.users?.mailes_acumulados || 0),
-                    0,
-                  ) / (miembrosActivos.length || 1),
-                );
+                const afinidad = Math.round((g._score || 0) * 100);
+                const promedioMailes =
+                  g._promedioMailes ??
+                  Math.round(
+                    miembrosActivos.reduce(
+                      (sum: number, m: any) =>
+                        sum + (m.users?.mailes_acumulados || 0),
+                      0,
+                    ) / (miembrosActivos.length || 1),
+                  );
                 return (
                   <View key={g.id} style={s.grupoMatchItem}>
                     <View style={s.grupoMatchInfo}>
@@ -504,7 +550,9 @@ export default function GrupoView({
                       <Text style={s.grupoMatchSub}>
                         👥 {miembrosActivos.length}/{g.max_miembros} miembros
                         {"  "}⭐ {promedioMailes.toLocaleString()} mAiles
-                        promedio
+                      </Text>
+                      <Text style={s.grupoMatchAfinidad}>
+                        🎯 {afinidad}% afinidad
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -541,7 +589,7 @@ function getStyles(
 ) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.background },
-    scroll: { paddingHorizontal: 20 },
+    scroll: { paddingHorizontal: 20, flexGrow: 1 },
 
     noGroupContainer: {
       flex: 1,
@@ -908,6 +956,71 @@ function getStyles(
       color: colors.textSecondary,
       fontSize: 11,
       marginTop: 2,
+    },
+    grupoMatchAfinidad: {
+      color: colors.primary ?? "#002b73",
+      fontSize: 11,
+      fontWeight: "600",
+      marginTop: 3,
+    },
+    pendienteContainer: {
+      flex: 1,
+      minHeight: 500,
+      justifyContent: "center" as const,
+      alignItems: "center" as const,
+      paddingHorizontal: 24,
+      gap: 8,
+    },
+    pendienteNombreGrupo: {
+      color: colors.textPrimary,
+      fontSize: 20,
+      fontWeight: "800",
+      marginTop: 4,
+      marginBottom: 16,
+      textAlign: "center" as const,
+    },
+    pendienteHint: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      textAlign: "center" as const,
+      lineHeight: 20,
+      marginBottom: 24,
+      paddingHorizontal: 8,
+    },
+    btnCancelarSolicitud: {
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderWidth: 1,
+      borderColor: "#e05c5c",
+      alignItems: "center" as const,
+    },
+    btnCancelarSolicitudText: {
+      color: "#e05c5c",
+      fontWeight: "700",
+      fontSize: 14,
+    },
+    sinResultadosContainer: {
+      alignItems: "center" as const,
+      paddingVertical: 24,
+      paddingHorizontal: 8,
+    },
+    sinResultadosIcon: {
+      fontSize: 40,
+      marginBottom: 12,
+    },
+    sinResultadosTitulo: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 8,
+      textAlign: "center" as const,
+    },
+    sinResultadosDesc: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      textAlign: "center" as const,
+      lineHeight: 20,
     },
     btnUnirse: {
       backgroundColor: colors.primary,
