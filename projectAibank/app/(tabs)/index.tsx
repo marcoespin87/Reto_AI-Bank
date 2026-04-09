@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import HomeUI from "../../components/HomeUI";
 import { supabase } from "../../lib/supabase";
+import TutorialInteractivo from '../../components/TutorialInteractivo';
+import { useTutorial } from '../../hooks/useTutorial';
 
 export default function HomeScreen() {
   const [userName, setUserName] = useState("");
@@ -13,6 +15,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [misStickersRecientes, setMisStickersRecientes] = useState<any[]>([]);
   const [numeroCuenta, setNumeroCuenta] = useState("");
+  const { mostrar, listo, completar } = useTutorial();
 
   useEffect(() => {
     loadUserData();
@@ -79,6 +82,7 @@ export default function HomeScreen() {
   }
 
   return (
+    <>
     <HomeUI
       userName={userName}
       mailes={mailes}
@@ -91,5 +95,13 @@ export default function HomeScreen() {
       onCopiarCuenta={handleCopiarCuenta}
       formatNumeroCuenta={formatNumeroCuenta}
     />
+    {listo && (
+        <TutorialInteractivo
+          visible={mostrar}
+          onCompletar={completar}
+          userName={userName}
+        />
+      )}
+    </>
   );
 }

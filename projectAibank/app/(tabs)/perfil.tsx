@@ -8,6 +8,8 @@ import { router } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import BottomNav from '../../components/BottomNav';
+import { useTutorial } from '../../hooks/useTutorial';
+
 
 export default function PerfilScreen() {
   const { colors, theme, toggleTheme } = useTheme();
@@ -24,6 +26,8 @@ export default function PerfilScreen() {
 
   // Animación toggle tema
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  // Reiniciar tutorial
+  const { resetear } = useTutorial();
 
   useEffect(() => { loadData(); }, []);
 
@@ -269,7 +273,20 @@ export default function PerfilScreen() {
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
+            
           ))}
+          <TouchableOpacity
+            style={s.settingItem}
+            onPress={resetear}
+          >
+            <View style={s.settingLeft}>
+              <View style={s.settingIconWrap}>
+                <Text style={{ fontSize: 18 }}>❓</Text>?
+              </View>
+              <Text style={s.settingLabel}>Que hay de nuevo</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
           <TouchableOpacity style={s.settingItem} onPress={handleLogout}>
             <View style={s.settingLeft}>
               <View style={[s.settingIconWrap, { backgroundColor: colors.errorDim }]}>
