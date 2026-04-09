@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Animated } from 'react-native';
 import { supabase } from '../../lib/supabase';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
 import PerfilUI from '../../components/PerfilUI';
 
@@ -23,6 +23,7 @@ export default function PerfilScreen() {
   const [estrellasActuales, setEstrellasActuales] = useState(0);
   const [medallaNombre, setMedallaNombre] = useState('');
   const [comprasUmbral, setComprasUmbral] = useState(5);
+  const [ligaNombre, setLigaNombre] = useState('');
 
   // Estado UI
   const [refreshing, setRefreshing] = useState(false);
@@ -32,7 +33,7 @@ export default function PerfilScreen() {
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   // ============ Efectos ============
-  useEffect(() => { loadData(); }, []);
+  useFocusEffect(useCallback(() => { loadData(); }, []));
 
   // ============ Handlers de Datos ============
   async function loadData() {
@@ -74,16 +75,26 @@ export default function PerfilScreen() {
 
         const grupo = memberData.groups as any;
         if (grupo?.liga_id) {
-          const { data: medalData } = await supabase
-            .from('liga_medals')
-            .select('nombre_medalla, umbral_compras_por_estrella')
-            .eq('liga_id', grupo.liga_id)
-            .eq('numero_medalla', medallaNum)
-            .maybeSingle();
+          const [{ data: medalData }, { data: ligaData }] = await Promise.all([
+            supabase
+              .from('liga_medals')
+              .select('nombre_medalla, umbral_compras_por_estrella')
+              .eq('liga_id', grupo.liga_id)
+              .eq('numero_medalla', medallaNum)
+              .maybeSingle(),
+            supabase
+              .from('ligas')
+              .select('nombre')
+              .eq('id', grupo.liga_id)
+              .maybeSingle(),
+          ]);
 
           if (medalData) {
             setMedallaNombre(medalData.nombre_medalla ?? '');
             setComprasUmbral(medalData.umbral_compras_por_estrella ?? 5);
+          }
+          if (ligaData) {
+            setLigaNombre((ligaData as any).nombre ?? '');
           }
         }
       }
@@ -121,6 +132,7 @@ export default function PerfilScreen() {
       medallaActual={medallaActual}
       estrellasActuales={estrellasActuales}
       medallaNombre={medallaNombre}
+      ligaNombre={ligaNombre}
       comprasUmbral={comprasUmbral}
       refreshing={refreshing}
       beneficiosOpen={beneficiosOpen}

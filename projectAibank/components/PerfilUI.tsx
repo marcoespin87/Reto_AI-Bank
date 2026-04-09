@@ -28,6 +28,7 @@ interface PerfilUIProps {
   medallaActual: number;
   estrellasActuales: number;
   medallaNombre: string;
+  ligaNombre: string;
   comprasUmbral: number;
   refreshing: boolean;
   beneficiosOpen: boolean;
@@ -133,9 +134,14 @@ export default function PerfilUI(props: PerfilUIProps) {
                 />
               </TouchableOpacity>
             </Animated.View>
-            <View style={s.leagueBadge}>
-              <Text style={s.leagueBadgeText}>{medallaLabel}</Text>
-            </View>
+            {(props.ligaNombre || props.medallaNombre) && (
+              <View style={s.leagueBadge}>
+                <Ionicons name="trophy-outline" size={11} color={colors.primary} style={{ marginRight: 4 }} />
+                <Text style={s.leagueBadgeText}>
+                  {[props.ligaNombre, props.medallaNombre || `Medalla ${props.medallaActual}`].filter(Boolean).join(' • ')}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -147,9 +153,11 @@ export default function PerfilUI(props: PerfilUIProps) {
                 {props.userName.charAt(0).toUpperCase()}
               </Text>
             </View>
-            <View style={s.medalBadge}>
-              <Text style={s.medalBadgeText}>Liga Plata</Text>
-            </View>
+            {props.ligaNombre ? (
+              <View style={s.medalBadge}>
+                <Text style={s.medalBadgeText}>{props.ligaNombre}</Text>
+              </View>
+            ) : null}
           </View>
           <Text style={s.profileName}>{props.userName}</Text>
           <Text style={s.profileEmail}>{props.email}</Text>
@@ -423,6 +431,8 @@ function getStyles(colors: ReturnType<typeof useTheme>["colors"]) {
       borderRadius: 20,
       borderWidth: 0.5,
       borderColor: colors.borderStrong,
+      flexDirection: "row",
+      alignItems: "center",
     },
     leagueBadgeText: { color: colors.primary, fontSize: 10, fontWeight: "700" },
 

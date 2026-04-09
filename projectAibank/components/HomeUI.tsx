@@ -127,15 +127,24 @@ export default function HomeUI({
               <Text style={s.subGreeting}>BIENVENIDO AL ESTADIO</Text>
             </View>
           </View>
-          <TouchableOpacity style={s.leagueBadge}>
-            <Ionicons
-              name="trophy-outline"
-              size={11}
-              color={colors.primary}
-              style={{ marginRight: 4 }}
-            />
-            <Text style={s.leagueBadgeText}>Liga Plata • Medalla 3</Text>
-          </TouchableOpacity>
+          {(progressData.ligaNombre || progressData.medallaNombre) && (
+            <TouchableOpacity style={s.leagueBadge}>
+              <Ionicons
+                name="trophy-outline"
+                size={11}
+                color={colors.primary}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={s.leagueBadgeText}>
+                {[
+                  progressData.ligaNombre,
+                  progressData.medallaNombre || `Medalla ${progressData.medalla}`,
+                ]
+                  .filter(Boolean)
+                  .join(" • ")}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Bank Card — premium */}

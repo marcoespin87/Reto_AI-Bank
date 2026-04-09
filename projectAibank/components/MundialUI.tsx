@@ -57,6 +57,9 @@ export const PARTIDO = {
 };
 
 export interface MundialUIProps {
+  ligaNombre: string;
+  medallaNombre: string;
+  medallaActual: number;
   golesLocal: number;
   golesVisitante: number;
   prediccionEnviada: boolean;
@@ -76,6 +79,9 @@ export interface MundialUIProps {
 }
 
 export default function MundialUI({
+  ligaNombre,
+  medallaNombre,
+  medallaActual,
   golesLocal,
   golesVisitante,
   prediccionEnviada,
@@ -118,10 +124,12 @@ export default function MundialUI({
             </Text>
           </View>
         </View>
-        <View style={s.topNavRight}>
-          <Text style={s.ligaText}>Liga Plata</Text>
-          <Text style={s.medalText}>Medalla 3</Text>
-        </View>
+        {(ligaNombre || medallaNombre) && (
+          <View style={s.topNavRight}>
+            {ligaNombre ? <Text style={s.ligaText}>{ligaNombre}</Text> : null}
+            <Text style={s.medalText}>{medallaNombre || `Medalla ${medallaActual}`}</Text>
+          </View>
+        )}
       </View>
 
       <KeyboardAvoidingView

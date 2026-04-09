@@ -25,6 +25,7 @@ export default function GrupoScreen() {
   const [codigoInput, setCodigoInput] = useState("");
   const [userMailes, setUserMailes] = useState(0);
   const [gruposMatch, setGruposMatch] = useState<any[]>([]);
+  const [ligaNombre, setLigaNombre] = useState("");
 
   useEffect(() => {
     loadData();
@@ -64,6 +65,15 @@ export default function GrupoScreen() {
 
     if (grupoData) {
       setGrupo(grupoData);
+
+      if (grupoData.liga_id) {
+        const { data: ligaData } = await supabase
+          .from('ligas')
+          .select('nombre')
+          .eq('id', grupoData.liga_id)
+          .maybeSingle();
+        if (ligaData) setLigaNombre((ligaData as any).nombre ?? '');
+      }
 
       const { data: miembrosData } = await supabase
         .from("group_members")
@@ -459,6 +469,7 @@ export default function GrupoScreen() {
       onAprobarMiembro={aprobarMiembro}
       onRechazarMiembro={rechazarMiembro}
       onRenombrarGrupo={renombrarGrupo}
+      ligaNombre={ligaNombre}
     />
   );
 }

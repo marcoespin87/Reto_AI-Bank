@@ -16,6 +16,9 @@ import SobreModal from "./SobreModal";
 
 interface BancoUIProps {
   userName: string;
+  ligaNombre: string;
+  medallaNombre: string;
+  medallaActual: number;
   saldo: number;
   numeroCuenta: string;
   transactions: any[];
@@ -67,6 +70,9 @@ const modalConfig = {
 
 export default function BancoUI({
   userName,
+  ligaNombre,
+  medallaNombre,
+  medallaActual,
   saldo,
   numeroCuenta,
   transactions,
@@ -109,9 +115,14 @@ export default function BancoUI({
               <Text style={s.subGreeting}>SECCIÓN BANCO</Text>
             </View>
           </View>
-          <TouchableOpacity style={s.leagueBadge}>
-            <Text style={s.leagueBadgeText}>Liga Plata • Medalla 3</Text>
-          </TouchableOpacity>
+          {(ligaNombre || medallaNombre) && (
+            <TouchableOpacity style={s.leagueBadge}>
+              <Ionicons name="trophy-outline" size={11} color={colors.primary} style={{ marginRight: 4 }} />
+              <Text style={s.leagueBadgeText}>
+                {[ligaNombre, medallaNombre || `Medalla ${medallaActual}`].filter(Boolean).join(' • ')}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Balance Card */}
@@ -528,16 +539,22 @@ function getStyles(
       paddingVertical: 6,
       borderRadius: 20,
       backgroundColor: colors.cardBackground,
-      borderWidth: 0.5,
+      borderWidth: 1,
       borderColor: colors.borderStrong,
     },
-    periodBtnActive: { backgroundColor: colors.borderMedium },
+    periodBtnActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
     periodBtnText: {
       color: colors.textSecondary,
       fontSize: 12,
       fontWeight: "600",
     },
-    periodBtnTextActive: { color: colors.textSecondary, fontWeight: "700" },
+    periodBtnTextActive: {
+      color: colors.background,
+      fontWeight: "800",
+    },
 
     empty: { alignItems: "center", padding: 40, gap: 12 },
     emptyIcon: { fontSize: 40 },

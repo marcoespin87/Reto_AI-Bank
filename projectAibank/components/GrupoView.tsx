@@ -50,6 +50,7 @@ interface GrupoViewProps {
   onAprobarMiembro: (id: number) => void;
   onRechazarMiembro: (id: number) => void;
   onRenombrarGrupo: () => void;
+  ligaNombre: string;
 }
 
 export default function GrupoView({
@@ -87,6 +88,7 @@ export default function GrupoView({
   onAprobarMiembro,
   onRechazarMiembro,
   onRenombrarGrupo,
+  ligaNombre,
 }: GrupoViewProps) {
   const { colors } = useTheme();
 
@@ -139,8 +141,8 @@ export default function GrupoView({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#b2c5ff"
-            colors={["#b2c5ff"]}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
       >
@@ -242,10 +244,11 @@ export default function GrupoView({
               <View style={{ flex: 1 }}>
                 <Text style={s.groupName}>{grupo.nombre}</Text>
                 <View style={s.groupBadgeRow}>
-                  <View style={s.groupBadge}>
-                    <Text style={s.groupBadgeText}>LIGA PLATA</Text>
-                  </View>
-                  <Text style={s.groupRank}>#2 en liga</Text>
+                  {ligaNombre ? (
+                    <View style={s.groupBadge}>
+                      <Text style={s.groupBadgeText}>{ligaNombre.toUpperCase()}</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
               <View style={s.headerBtns}>
@@ -404,7 +407,7 @@ export default function GrupoView({
                       style={[
                         s.miniAvatar,
                         m.user_id === userId && {
-                          borderColor: "#b2c5ff",
+                          borderColor: colors.primary,
                           borderWidth: 2,
                         },
                       ]}
@@ -521,7 +524,7 @@ export default function GrupoView({
                           s.progressFill,
                           { width: `${pct}%` },
                           obj.es_objetivo_maximo && {
-                            backgroundColor: "#ffd65b",
+                            backgroundColor: colors.gold,
                           },
                         ]}
                       />
@@ -622,7 +625,7 @@ export default function GrupoView({
             <TextInput
               style={s.input}
               placeholder="Ej: Los Cracks FC"
-              placeholderTextColor="#424655"
+              placeholderTextColor={colors.textMuted}
               value={nombreGrupo}
               onChangeText={setNombreGrupo}
             />
@@ -632,7 +635,7 @@ export default function GrupoView({
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#002b73" />
+                <ActivityIndicator color={colors.textOnGold} />
               ) : (
                 <Text style={s.btnPrimaryText}>Crear grupo ✦</Text>
               )}
@@ -655,7 +658,7 @@ export default function GrupoView({
             <TextInput
               style={s.input}
               placeholder="Ej: ABC123"
-              placeholderTextColor="#424655"
+              placeholderTextColor={colors.textMuted}
               value={codigoInput}
               onChangeText={setCodigoInput}
               autoCapitalize="characters"
@@ -666,7 +669,7 @@ export default function GrupoView({
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#002b73" />
+                <ActivityIndicator color={colors.textOnGold} />
               ) : (
                 <Text style={s.btnPrimaryText}>Unirse ✦</Text>
               )}
@@ -689,7 +692,7 @@ export default function GrupoView({
             <TextInput
               style={s.input}
               placeholder="Nombre del grupo"
-              placeholderTextColor="#424655"
+              placeholderTextColor={colors.textMuted}
               value={nombreGrupo}
               onChangeText={setNombreGrupo}
             />
@@ -699,7 +702,7 @@ export default function GrupoView({
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#002b73" />
+                <ActivityIndicator color={colors.textOnGold} />
               ) : (
                 <Text style={s.btnPrimaryText}>Guardar ✦</Text>
               )}
@@ -719,8 +722,8 @@ export default function GrupoView({
           <View style={s.modalCard}>
             <Text style={s.modalTitle}>Matchmaking</Text>
             <Text style={s.matchmakingDesc}>
-              Buscaremos un grupo con perfiles de gasto similares al tuyo en
-              Liga Plata.
+              Buscaremos un grupo con perfiles de gasto similares al tuyo
+              {ligaNombre ? ` en ${ligaNombre}` : ""}.
             </Text>
             <TouchableOpacity
               style={[s.btnPrimary, loading && { opacity: 0.7 }]}
@@ -728,7 +731,7 @@ export default function GrupoView({
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#002b73" />
+                <ActivityIndicator color={colors.textOnGold} />
               ) : (
                 <Text style={s.btnPrimaryText}>🎯 Buscar match</Text>
               )}

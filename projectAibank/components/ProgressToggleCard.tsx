@@ -21,6 +21,7 @@ export interface ProgressData {
   mailesEstaSemana: number;
   comprasEstaSemana: number;
   // Group
+  ligaNombre: string;
   grupoNombre: string | null;
   grupoMailesTotal: number;
   grupoMailesMeta: number;

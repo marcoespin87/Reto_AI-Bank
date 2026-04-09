@@ -9,6 +9,7 @@ import { supabase } from "../../lib/supabase";
 const DEFAULT_PROGRESS: ProgressData = {
   medalla: 1,
   medallaNombre: "",
+  ligaNombre: "",
   estrellas: 0,
   comprasParaStar: 10,
   comprasUmbral: 10,
@@ -122,8 +123,8 @@ export default function HomeScreen() {
     const ligaId = grupo.liga_id;
     const grupoNombre = grupo.nombre_grupo ?? null;
 
-    // Fetch medal data + group members + total transactions in parallel
-    const [medalResult, groupMembersResult, totalTxCount] = await Promise.all([
+    // Fetch medal data + group members + total transactions + liga name in parallel
+    const [medalResult, groupMembersResult, totalTxCount, ligaResult] = await Promise.all([
       supabase
         .from("liga_medals")
         .select("umbral_compras_por_estrella, nombre_medalla")
@@ -141,6 +142,12 @@ export default function HomeScreen() {
         .from("transactions")
         .select("*", { count: "exact", head: true })
         .eq("user_id", data.id),
+
+      supabase
+        .from("ligas")
+        .select("nombre")
+        .eq("id", ligaId)
+        .maybeSingle(),
     ]);
 
     // Fetch group objectives meta (first active objective)
@@ -153,6 +160,7 @@ export default function HomeScreen() {
 
     const umbral = medalResult.data?.umbral_compras_por_estrella ?? 10;
     const medallaNombre = medalResult.data?.nombre_medalla ?? "";
+    const ligaNombre = (ligaResult.data as any)?.nombre ?? "";
     const totalCompras = totalTxCount.count ?? 0;
     const comprasActuales = umbral > 0 ? totalCompras % umbral : 0;
     const comprasParaStar = umbral > 0 ? umbral - comprasActuales : 0;
@@ -168,6 +176,7 @@ export default function HomeScreen() {
     setProgressData({
       medalla: medallaActual,
       medallaNombre,
+      ligaNombre,
       estrellas: estrellasActuales,
       comprasParaStar,
       comprasUmbral: umbral,
