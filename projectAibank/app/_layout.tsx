@@ -3,6 +3,7 @@ import { Stack, router } from "expo-router";
 import { useEffect } from "react";
 import { ThemeProvider } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
+import { TutorialProvider } from '../context/TutorialContext';
 
 export default function RootLayout() {
   useEffect(() => {
@@ -58,10 +59,12 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
+      <TutorialProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
       </Stack>
+      </TutorialProvider>
     </ThemeProvider>
   );
 }

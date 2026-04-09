@@ -74,6 +74,11 @@ export default function PerfilScreen() {
     setRefreshing(false);
   }
 
+  async function handleResetTutorial() {
+    await resetear();
+    router.replace('/(tabs)');
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.replace('/(auth)/login');
@@ -275,15 +280,12 @@ export default function PerfilScreen() {
             </TouchableOpacity>
             
           ))}
-          <TouchableOpacity
-            style={s.settingItem}
-            onPress={resetear}
-          >
+          <TouchableOpacity style={s.settingItem} onPress={handleResetTutorial}>
             <View style={s.settingLeft}>
               <View style={s.settingIconWrap}>
-                <Text style={{ fontSize: 18 }}>❓</Text>?
+                <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
               </View>
-              <Text style={s.settingLabel}>Que hay de nuevo</Text>
+              <Text style={s.settingLabel}>¿Qué hay de nuevo?</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
