@@ -12,7 +12,7 @@ Uso (desde la raíz del proyecto):
 
 Endpoints:
   POST /chat          — Envía una consulta al pipeline de agentes
-  GET  /health        — Verifica que el servicio está activo
+  GET  /health        — Verifica que el servicio está activo.
 """
 
 import os
