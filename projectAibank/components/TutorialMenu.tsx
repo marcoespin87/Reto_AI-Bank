@@ -26,7 +26,7 @@ const SECCIONES = [
     paso: 5,
     icon: '⚽',
     titulo: 'Predicciones de partidos',
-    sub: 'Tab Mundial → predice y gana mAiles',
+    sub: 'Mundial → predice y gana mAiles',
   },
   {
     paso: 6,
@@ -59,9 +59,7 @@ export default function TutorialMenu({ visible, onClose }: Props) {
   const s = getStyles(colors);
 
   function handleSeccion(paso: number) {
-    onClose();
-    // Pequeño delay para que el modal cierre antes de abrir el tutorial
-    setTimeout(() => iniciarDesde(paso), 300);
+    iniciarDesde(paso);
   }
 
   return (

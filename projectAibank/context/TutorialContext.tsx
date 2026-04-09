@@ -47,10 +47,9 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   }
 
   function iniciarDesde(paso: number) {
-    setMostrar(false);  // primero apaga
     setPasoInicial(paso);
     setMostrarMenu(false);
-    setTimeout(() => setMostrar(true), 50);
+    setMostrar(true);
   }
 
   return (

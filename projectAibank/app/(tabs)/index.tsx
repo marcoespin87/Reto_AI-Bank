@@ -16,7 +16,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [misStickersRecientes, setMisStickersRecientes] = useState<any[]>([]);
   const [numeroCuenta, setNumeroCuenta] = useState("");
-  const { mostrar, listo, completar, verificarParaUsuario, mostrarMenu, setMostrarMenu } = useTutorial();
+  const { mostrar, listo, completar, pasoInicial, verificarParaUsuario, mostrarMenu, setMostrarMenu } = useTutorial();
 
   useEffect(() => {
     loadUserData();
@@ -100,8 +100,10 @@ export default function HomeScreen() {
     />
     {listo && (
         <TutorialInteractivo
+          key={pasoInicial}
           visible={mostrar}
           onCompletar={completar}
+          pasoInicial={pasoInicial}
           userName={userName}
         />
       )}
