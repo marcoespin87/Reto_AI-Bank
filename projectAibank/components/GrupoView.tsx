@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import BottomNav from "./BottomNav";
+import RankingLiga from './RankingLiga';
 
 interface GrupoViewProps {
   userId: number | null;
@@ -34,6 +35,7 @@ interface GrupoViewProps {
   gruposMatch: any[];
   ligaNombre: string;
   grupoPendiente: any | null;
+  posicionEnLiga: number | null;
   onRefresh: () => void;
   setModalCrear: (v: boolean) => void;
   setModalUnirse: (v: boolean) => void;
@@ -92,6 +94,7 @@ export default function GrupoView({
   onRechazarMiembro,
   onRenombrarGrupo,
   onCancelarSolicitud,
+  posicionEnLiga,
 }: GrupoViewProps) {
   const { colors } = useTheme();
 
@@ -287,6 +290,12 @@ export default function GrupoView({
                       </Text>
                     </View>
                   ) : null}
+                  <View style={s.groupBadge}>
+                    <Text style={s.groupBadgeText}>LIGA PLATA</Text>
+                  </View>
+                  <Text style={s.groupRank}>
+                    {posicionEnLiga ? `#${posicionEnLiga} en liga` : '— en liga'}
+                  </Text>
                 </View>
               </View>
               <View style={s.headerBtns}>
@@ -573,6 +582,10 @@ export default function GrupoView({
                 );
               })}
             </View>
+            <RankingLiga
+              grupoActualId={grupo?.id ?? null}
+              ligaId={grupo?.liga_id ?? 8}
+            />
           </View>
         )}
 
@@ -1072,6 +1085,11 @@ function getStyles(
       fontSize: 9,
       fontWeight: "700",
       letterSpacing: 1,
+    },
+    groupRank: {
+      color: colors.primary,
+      fontSize: 11,
+      fontWeight: "700",
     },
     headerBtns: { flexDirection: "row", gap: 8 },
     iconBtn: {
