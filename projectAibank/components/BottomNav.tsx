@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 
-type Tab = "home" | "banco" | "mundial" | "grupo" | "perfil";
+type Tab = "home" | "banco" | "mundial" | "grupo" | "premios" | "perfil";
 
 interface BottomNavProps {
   active: Tab;
@@ -43,6 +43,13 @@ const TABS: {
     iconActive: "people",
     label: "Grupo",
     route: "/(tabs)/grupo",
+  },
+  {
+    key: "premios",
+    icon: "trophy-outline",
+    iconActive: "trophy",
+    label: "Premios",
+    route: "/(tabs)/premios",
   },
   {
     key: "perfil",
