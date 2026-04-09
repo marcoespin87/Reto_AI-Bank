@@ -1,6 +1,7 @@
 import {
   ActivityIndicator,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -25,6 +26,7 @@ export const PARTIDO = {
   local: {
     nombre: "Ecuador",
     bandera: "🇪🇨",
+    iso: "ec",
     alias: "ECU",
     ranking: 41,
     goles: { anotados: 4, recibidos: 3 },
@@ -35,6 +37,7 @@ export const PARTIDO = {
   visitante: {
     nombre: "Costa de Marfil",
     bandera: "🇨🇮",
+    iso: "ci",
     alias: "CIV",
     ranking: 52,
     goles: { anotados: 3, recibidos: 2 },
@@ -54,6 +57,9 @@ export const PARTIDO = {
 };
 
 export interface MundialUIProps {
+  ligaNombre: string;
+  medallaNombre: string;
+  medallaActual: number;
   golesLocal: number;
   golesVisitante: number;
   prediccionEnviada: boolean;
@@ -73,6 +79,9 @@ export interface MundialUIProps {
 }
 
 export default function MundialUI({
+  ligaNombre,
+  medallaNombre,
+  medallaActual,
   golesLocal,
   golesVisitante,
   prediccionEnviada,
@@ -115,10 +124,12 @@ export default function MundialUI({
             </Text>
           </View>
         </View>
-        <View style={s.topNavRight}>
-          <Text style={s.ligaText}>Liga Plata</Text>
-          <Text style={s.medalText}>Medalla 3</Text>
-        </View>
+        {(ligaNombre || medallaNombre) && (
+          <View style={s.topNavRight}>
+            {ligaNombre ? <Text style={s.ligaText}>{ligaNombre}</Text> : null}
+            <Text style={s.medalText}>{medallaNombre || `Medalla ${medallaActual}`}</Text>
+          </View>
+        )}
       </View>
 
       <KeyboardAvoidingView
@@ -141,7 +152,13 @@ export default function MundialUI({
             <View style={s.teamsRow}>
               <View style={s.teamCol}>
                 <View style={s.flagCircle}>
-                  <Text style={s.flagEmoji}>{PARTIDO.local.bandera}</Text>
+                  <Image
+                    source={{
+                      uri: `https://flagcdn.com/w80/${PARTIDO.local.iso}.png`,
+                    }}
+                    style={s.flagImg}
+                    resizeMode="cover"
+                  />
                 </View>
                 <Text style={s.teamName}>{PARTIDO.local.nombre}</Text>
               </View>
@@ -151,7 +168,13 @@ export default function MundialUI({
               </View>
               <View style={s.teamCol}>
                 <View style={s.flagCircle}>
-                  <Text style={s.flagEmoji}>{PARTIDO.visitante.bandera}</Text>
+                  <Image
+                    source={{
+                      uri: `https://flagcdn.com/w80/${PARTIDO.visitante.iso}.png`,
+                    }}
+                    style={s.flagImg}
+                    resizeMode="cover"
+                  />
                 </View>
                 <Text style={s.teamName}>{PARTIDO.visitante.nombre}</Text>
               </View>
@@ -168,7 +191,6 @@ export default function MundialUI({
               <Text style={s.matchQuote}>"Analiza los datos y decide tú"</Text>
             </View>
           </View>
-
           {/* Bento: Forma reciente */}
           <View style={s.bentoCard}>
             <Text style={s.bentoLabel}>FORMA RECIENTE</Text>
@@ -201,7 +223,6 @@ export default function MundialUI({
               </View>
             </View>
           </View>
-
           {/* Bento: FIFA Ranking + Goles */}
           <View style={s.bentoRow}>
             <View style={[s.bentoCard, s.bentoHalf]}>
@@ -226,14 +247,19 @@ export default function MundialUI({
               </View>
             </View>
           </View>
-
           {/* Bento: Jugadores Clave */}
           <View style={s.bentoCard}>
             <Text style={s.bentoLabel}>JUGADORES CLAVE 🏆</Text>
             <View style={s.jugadoresRow}>
               <View style={s.jugadorLeft}>
                 <View style={s.jugadorAvatar}>
-                  <Text style={s.jugadorEmoji}>{PARTIDO.local.bandera}</Text>
+                  <Image
+                    source={{
+                      uri: `https://flagcdn.com/w80/${PARTIDO.local.iso}.png`,
+                    }}
+                    style={s.jugadorFlagImg}
+                    resizeMode="cover"
+                  />
                 </View>
                 <View>
                   <Text style={s.jugadorNombre}>
@@ -264,14 +290,19 @@ export default function MundialUI({
                     { borderColor: colors.borderStrong },
                   ]}
                 >
-                  <Text style={s.jugadorEmoji}>
-                    {PARTIDO.visitante.bandera}
-                  </Text>
+                  <Image
+                    source={{
+                      uri: `https://flagcdn.com/w80/${PARTIDO.visitante.iso}.png`,
+                    }}
+                    style={s.jugadorFlagImg}
+                    resizeMode="cover"
+                  />
                 </View>
               </View>
-            </View>
-          </View>
-
+            </View>{" "}
+            {/* <-- Cierre de jugadoresRow */}
+          </View>{" "}
+          {/* <-- Cierre de bentoCard */}
           {/* Bento: H2H */}
           <View style={s.bentoCard}>
             <Text style={s.bentoLabel}>CARA A CARA (H2H)</Text>
@@ -314,7 +345,6 @@ export default function MundialUI({
               </Text>
             </View>
           </View>
-
           <View style={{ height: 260 }} />
         </ScrollView>
 
@@ -327,7 +357,13 @@ export default function MundialUI({
 
             <View style={s.steppersRow}>
               <View style={s.stepperCol}>
-                <Text style={s.stepperFlag}>{PARTIDO.local.bandera}</Text>
+                <Image
+                  source={{
+                    uri: `https://flagcdn.com/w80/${PARTIDO.local.iso}.png`,
+                  }}
+                  style={s.stepperFlagImg}
+                  resizeMode="cover"
+                />
                 <View style={s.stepperBox}>
                   <TouchableOpacity
                     style={s.stepperBtn}
@@ -352,7 +388,13 @@ export default function MundialUI({
               <Text style={s.stepperDash}>—</Text>
 
               <View style={s.stepperCol}>
-                <Text style={s.stepperFlag}>{PARTIDO.visitante.bandera}</Text>
+                <Image
+                  source={{
+                    uri: `https://flagcdn.com/w80/${PARTIDO.visitante.iso}.png`,
+                  }}
+                  style={s.stepperFlagImg}
+                  resizeMode="cover"
+                />
                 <View style={s.stepperBox}>
                   <TouchableOpacity
                     style={s.stepperBtn}
@@ -466,7 +508,7 @@ function getStyles(
       justifyContent: "center",
     },
     backIcon: { color: colors.primary, fontSize: 18, fontWeight: "700" },
-    topNavTitle: { color: colors.primary, fontSize: 18, fontWeight: "800" },
+    topNavTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: "800" },
     topNavSub: {
       color: colors.textSecondary,
       fontSize: 10,
@@ -475,7 +517,7 @@ function getStyles(
     },
     topNavRight: { alignItems: "flex-end" },
     ligaText: { color: colors.primary, fontSize: 12, fontWeight: "700" },
-    medalText: { color: colors.textPrimary, fontSize: 10, fontWeight: "500" },
+    medalText: { color: colors.textSecondary, fontSize: 10, fontWeight: "500" },
 
     heroCard: {
       backgroundColor: colors.backgroundSecondary,
@@ -516,6 +558,7 @@ function getStyles(
       borderColor: colors.borderMedium,
     },
     flagEmoji: { fontSize: 44 },
+    flagImg: { width: 58, height: 58, borderRadius: 29 },
     teamName: {
       color: colors.textPrimary,
       fontSize: 16,
@@ -523,20 +566,34 @@ function getStyles(
       textAlign: "center",
     },
     vsCol: { alignItems: "center", gap: 4 },
-    vsText: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
+    vsText: {
+      color: colors.primary,
+      fontSize: 13,
+      fontWeight: "800",
+    },
     vsDivider: { width: 24, height: 1, backgroundColor: colors.borderStrong },
     matchInfoRow: { alignItems: "center", gap: 2 },
     matchEstadio: {
+      color: colors.textPrimary,
+      fontSize: 11,
+      fontWeight: "600",
+      fontStyle: "italic",
+      marginTop: 8,
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
+    },
+    matchFecha: {
       color: colors.textSecondary,
       fontSize: 11,
-      fontWeight: "500",
+      marginTop: 2,
     },
-    matchFecha: { color: colors.textSecondary, fontSize: 10 },
     matchQuote: {
-      color: colors.warning,
+      color: colors.textSecondary,
       fontSize: 11,
       fontStyle: "italic",
       marginTop: 8,
+      textAlign: "center",
     },
     predecirBtn: {
       backgroundColor: colors.gold,
@@ -566,7 +623,7 @@ function getStyles(
     bentoRow: { flexDirection: "row", gap: 10 },
     bentoHalf: { flex: 1, marginBottom: 10 },
     bentoLabel: {
-      color: colors.textSecondary,
+      color: colors.textMuted,
       fontSize: 9,
       fontWeight: "700",
       letterSpacing: 1.2,
@@ -588,17 +645,48 @@ function getStyles(
       borderRadius: 10,
     },
     rachaBadgeMuted: { backgroundColor: colors.cardBackground },
-    rachaBadgeText: { color: colors.primary, fontSize: 9, fontWeight: "700" },
-    rachaBadgeTextMuted: {
-      color: colors.textSecondary,
+    rachaBadgeText: {
+      color: colors.primary,
       fontSize: 9,
       fontWeight: "700",
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
+    },
+    rachaBadgeTextMuted: {
+      color: colors.textMuted,
+      fontSize: 9,
+      fontWeight: "700",
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
     },
 
     rankRow: { flexDirection: "row", alignItems: "baseline", marginTop: 4 },
-    rankBig: { color: colors.textPrimary, fontSize: 24, fontWeight: "800" },
-    rankVs: { color: colors.textMuted, fontSize: 10 },
-    rankSmall: { color: colors.textSecondary, fontSize: 18, fontWeight: "700" },
+    rankBig: {
+      color: colors.gold,
+      fontSize: 24,
+      fontWeight: "800",
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
+    },
+    rankVs: {
+      color: colors.primary,
+      fontSize: 12,
+      fontWeight: "800",
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
+    },
+    rankSmall: {
+      color: colors.textPrimary,
+      fontSize: 18,
+      fontWeight: "700",
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
+    },
 
     jugadoresRow: {
       flexDirection: "row",
@@ -629,12 +717,17 @@ function getStyles(
       justifyContent: "center",
     },
     jugadorEmoji: { fontSize: 22 },
+    jugadorFlagImg: { width: 36, height: 36, borderRadius: 18 },
     jugadorNombre: {
       color: colors.textPrimary,
       fontSize: 13,
       fontWeight: "700",
     },
-    jugadorStats: { color: colors.primary, fontSize: 10, marginTop: 1 },
+    jugadorStats: {
+      color: colors.textMuted,
+      fontSize: 10,
+      marginTop: 1,
+    },
 
     h2hBar: {
       flexDirection: "row",
@@ -645,7 +738,11 @@ function getStyles(
     },
     h2hSegment: { height: "100%" },
     h2hLabels: { flexDirection: "row", justifyContent: "space-between" },
-    h2hLabel: { color: colors.primary, fontSize: 10, fontWeight: "600" },
+    h2hLabel: {
+      color: colors.textPrimary,
+      fontSize: 10,
+      fontWeight: "800",
+    },
 
     chatFab: {
       position: "absolute",
@@ -703,6 +800,7 @@ function getStyles(
     },
     stepperCol: { alignItems: "center", gap: 8 },
     stepperFlag: { fontSize: 28 },
+    stepperFlagImg: { width: 44, height: 30, borderRadius: 4 },
     stepperBox: {
       flexDirection: "row",
       alignItems: "center",
@@ -743,9 +841,30 @@ function getStyles(
       marginTop: 4,
     },
     rewardLabel: { color: colors.textSecondary, fontSize: 11 },
-    rewardGold: { color: colors.gold, fontSize: 11, fontWeight: "700" },
-    rewardBlue: { color: colors.primary, fontSize: 11, fontWeight: "700" },
-    rewardRacha: { color: colors.warning, fontSize: 11, fontWeight: "700" },
+    rewardGold: {
+      color: colors.gold,
+      fontSize: 11,
+      fontWeight: "700",
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
+    },
+    rewardBlue: {
+      color: colors.primary,
+      fontSize: 11,
+      fontWeight: "700",
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
+    },
+    rewardRacha: {
+      color: colors.warning,
+      fontSize: 11,
+      fontWeight: "700",
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
+    },
     ctaBtn: {
       height: 52,
       borderRadius: 16,
@@ -766,6 +885,9 @@ function getStyles(
       fontWeight: "800",
       textTransform: "uppercase",
       letterSpacing: 0.5,
+      textShadowColor: colors.shadowColor,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 0,
     },
   });
 }

@@ -1,0 +1,18 @@
+Quiero crear una aplicación web de una sola página (SPA) que sirva como prototipo funcional para validar identidad. El flujo debe ser el siguiente:
+
+1. Al abrir la app, se muestra un logo (imagen PNG o placeholder) centrado con una animación de carga (spinner o pulso elegante) durante 2 segundos.
+2. Luego, aparece una pantalla que muestra el logo, una frase descriptiva y el campo para que el usuario ingrese su número de cédula, junto con un botón "Continuar".
+3. Al hacer clic en el botón, la cédula ingresada debe comprobarse contra la base de datos. Si no está registrada o no se encuentra, debe mostrar la pantalla final de bienvenida con el mensaje: "Lamentablemente, la cédula ingresada no se encuentra registrada" y mostrar la lista de correos preestablecidos para pruebas.
+4. Si la cédula ingresada sí se encuentra en la base de datos, en ese instante debe aparecer (sin recargar la página) un nuevo campo de entrada para que el usuario ingrese su contraseña, con un diseño elegante y moderno. El flujo de login debe ser fluido y visualmente atractivo.
+
+Finalmente, se muestra una pantalla de bienvenida con el título "Bienvenido al Sistema de Pruebas" y una lista o tabla de correos preestablecidos para pruebas.
+
+Requisitos de diseño:
+
+- Estética profesional, limpia y moderna.
+- Paleta de colores: azul dominante, amarillo para acentos y blanco para fondos.
+- Tipografía Sans-Serif.
+- Diseño responsivo.
+- Uso de tarjetas blancas con bordes azules y detalles amarillos para la lista de correos.
+
+Tecnología: React.js con Tailwind CSS (preferido) o HTML/JS/CSS moderno.

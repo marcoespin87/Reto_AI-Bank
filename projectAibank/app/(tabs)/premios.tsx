@@ -1,5 +1,6 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -10,21 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SEGMENTACION_API_URL } from "../../lib/api";
-import { supabase } from "../../lib/supabase";
-
-// ─── Tipos ───────────────────────────────────────────────────────────────────
-
-interface SegmentacionResult {
-  categoria: string;
-  confianza_pct: number;
-  premio_id: string;
-  premio_nombre: string;
-  afinidad_pct: number;
-  razones: string[];
-  alternativas: { premio: string; nombre: string; afinidad: number }[];
-  top3_categorias: [string, number][];
-}
+import BottomNav from "../../components/BottomNav";
+import { useTheme } from "../../context/ThemeContext";
+import { usePremios } from "../../hooks/usePremios";
 
 // ─── Mapas de display ────────────────────────────────────────────────────────
 
@@ -64,190 +53,31 @@ const CATEGORIA_LABEL: Record<string, string> = {
   premium_financiero: "Premium Financiero",
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function boolToInt(val: boolean | null | undefined): number {
-  return val ? 1 : 0;
-}
-
-/** Mapea scores como 'BB' al esquema que espera el modelo: AAA|AA|A|B|C */
-function mapScore(score: string | null | undefined): string {
-  if (!score) return "B";
-  if (["AAA", "AA", "A", "B", "C"].includes(score)) return score;
-  if (score.startsWith("BB") || score === "B+") return "B";
-  return "B";
-}
-
-/** Medalla actual → liga_tier que espera el modelo */
-function medallaALigaTier(medalla: number): string {
-  if (medalla <= 2) return "Bronce";
-  if (medalla <= 4) return "Plata";
-  if (medalla === 5) return "Oro";
-  return "Diamante";
-}
-
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
 export default function PremiosScreen() {
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<SegmentacionResult | null>(null);
-  const [userName, setUserName] = useState("");
-  const [ligaTier, setLigaTier] = useState("");
+  const {
+    loading,
+    refreshing,
+    error,
+    result,
+    userName,
+    ligaTier,
+    sinDatos,
+    fetchAndSegmentar,
+    onRefresh,
+  } = usePremios();
+
+  const { colors } = useTheme();
+  const s = getStyles(colors);
 
   useEffect(() => {
     fetchAndSegmentar();
   }, []);
 
-  const fetchAndSegmentar = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      // 1. Usuario autenticado
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("No hay sesión activa");
-
-      // 2. Datos del usuario + liga tier
-      const { data: userData, error: userErr } = await supabase
-        .from("users")
-        .select(
-          `
-          id, nombre, mailes_acumulados, antiguedad_cliente_meses,
-          num_productos_bancarios, score_crediticio,
-          tiene_credito_activo, tiene_cuenta_ahorro, meses_sin_mora,
-          pct_gasto_tecnologia, pct_gasto_viajes, pct_gasto_restaurantes,
-          pct_gasto_entretenimiento, pct_gasto_supermercado, pct_gasto_salud,
-          pct_gasto_educacion, pct_gasto_hogar, pct_gasto_otros,
-          predicciones_correctas_pct, racha_maxima_predicciones,
-          cromos_coleccionados, cromos_epicos_obtenidos, objetivos_completados,
-          participo_en_grupo, rol_en_grupo, votos_emitidos, dias_activo_temporada,
-          edad, genero, ciudad, nivel_educacion, ocupacion,
-          usa_app_movil, sesiones_app_semana, notificaciones_activadas,
-          compras_online_pct, dispositivo_preferido,
-          gasto_mensual_usd, frecuencia_transacciones_mes,
-          economic_tier_id,
-          economic_tiers ( nombre )
-        `,
-        )
-        .eq("email", user.email)
-        .single();
-
-      if (userErr || !userData) throw new Error("No se pudo cargar el perfil");
-
-      setUserName((userData.nombre as string)?.split(" ")[0] || "Usuario");
-
-      // 3. Medalla y estrellas actuales (desde group_members)
-      const { data: memberData } = await supabase
-        .from("group_members")
-        .select("medalla_actual, estrellas_actuales")
-        .eq("user_id", userData.id)
-        .eq("estado", "activo")
-        .order("medalla_actual", { ascending: false })
-        .limit(1)
-        .single();
-
-      const medallaFinal = memberData?.medalla_actual ?? 1;
-      const estrellasFinal = memberData?.estrellas_actuales ?? 0;
-
-      // liga_tier: viene de economic_tiers o se infiere de la medalla
-      const tierNombre =
-        (userData.economic_tiers as any)?.nombre ||
-        medallaALigaTier(medallaFinal);
-      setLigaTier(tierNombre);
-
-      // 4. Construir payload para el modelo
-      const payload = {
-        // Bloque A
-        liga_tier: tierNombre,
-        gasto_mensual_usd: Number(userData.gasto_mensual_usd) || 0,
-        frecuencia_transacciones_mes:
-          userData.frecuencia_transacciones_mes || 0,
-        antiguedad_cliente_meses: userData.antiguedad_cliente_meses || 0,
-        num_productos_bancarios: userData.num_productos_bancarios || 1,
-        score_crediticio: mapScore(userData.score_crediticio),
-        tiene_credito_activo: boolToInt(userData.tiene_credito_activo),
-        tiene_cuenta_ahorro: boolToInt(userData.tiene_cuenta_ahorro),
-        meses_sin_mora: userData.meses_sin_mora || 0,
-
-        // Bloque B
-        pct_gasto_tecnologia: userData.pct_gasto_tecnologia || 0,
-        pct_gasto_viajes: userData.pct_gasto_viajes || 0,
-        pct_gasto_restaurantes: userData.pct_gasto_restaurantes || 0,
-        pct_gasto_entretenimiento: userData.pct_gasto_entretenimiento || 0,
-        pct_gasto_supermercado: userData.pct_gasto_supermercado || 0,
-        pct_gasto_salud: userData.pct_gasto_salud || 0,
-        pct_gasto_educacion: userData.pct_gasto_educacion || 0,
-        pct_gasto_hogar: userData.pct_gasto_hogar || 0,
-        pct_gasto_otros: userData.pct_gasto_otros || 0,
-
-        // Bloque C
-        medalla_final: medallaFinal,
-        estrellas_finales: estrellasFinal,
-        mailes_acumulados: userData.mailes_acumulados || 0,
-        predicciones_correctas_pct:
-          Number(userData.predicciones_correctas_pct) || 0,
-        racha_maxima_predicciones: userData.racha_maxima_predicciones || 0,
-        cromos_coleccionados: userData.cromos_coleccionados || 0,
-        cromos_epicos_obtenidos: userData.cromos_epicos_obtenidos || 0,
-        objetivos_completados: userData.objetivos_completados || 0,
-
-        // Bloque D
-        participo_en_grupo: boolToInt(userData.participo_en_grupo),
-        rol_en_grupo:
-          userData.rol_en_grupo === "ninguno"
-            ? "sin_grupo"
-            : userData.rol_en_grupo || "sin_grupo",
-        votos_emitidos: userData.votos_emitidos || 0,
-        dias_activo_temporada: userData.dias_activo_temporada || 0,
-
-        // Bloque E
-        edad: userData.edad || 25,
-        genero: userData.genero || "No_especificado",
-        ciudad: userData.ciudad || "Quito",
-        nivel_educacion: userData.nivel_educacion || "universitario",
-        ocupacion: userData.ocupacion || "empleado_privado",
-
-        // Bloque F
-        usa_app_movil: 1,
-        sesiones_app_semana: userData.sesiones_app_semana || 4,
-        notificaciones_activadas: boolToInt(userData.notificaciones_activadas),
-        compras_online_pct: Number(userData.compras_online_pct) || 0,
-        dispositivo_preferido: userData.dispositivo_preferido || "Android",
-      };
-
-      // 5. Llamar a la API
-      const response = await fetch(`${SEGMENTACION_API_URL}/segmentar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Error del servidor: ${response.status} — ${errText}`);
-      }
-
-      const data: SegmentacionResult = await response.json();
-      setResult(data);
-    } catch (e: any) {
-      setError(e.message || "Error desconocido");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchAndSegmentar();
-  }, [fetchAndSegmentar]);
-
   const categoriaColor = result
-    ? (CATEGORIA_COLOR[result.categoria] ?? "#b2c5ff")
-    : "#b2c5ff";
+    ? (CATEGORIA_COLOR[result.categoria] ?? colors.primary)
+    : colors.primary;
 
   return (
     <SafeAreaView style={s.root}>
@@ -258,26 +88,42 @@ export default function PremiosScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#b2c5ff"
-            colors={["#b2c5ff"]}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
       >
         {/* Header */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <Text style={s.backIcon}>‹</Text>
-          </TouchableOpacity>
-          <View style={s.headerCenter}>
-            <Text style={s.headerTitle}>Mis Premios</Text>
-            <Text style={s.headerSub}>Temporada FIFA 2026</Text>
-          </View>
-          {ligaTier ? (
-            <View style={s.tierBadge}>
-              <Text style={s.tierBadgeText}>{ligaTier}</Text>
+          <View style={s.headerLeft}>
+            <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+              <Ionicons name="chevron-back" size={24} color={colors.primary} />
+            </TouchableOpacity>
+            <View>
+              <Text style={s.greeting}>Mis Premios</Text>
+              <Text style={s.subGreeting}>Temporada FIFA 2026</Text>
             </View>
-          ) : (
-            <View style={{ width: 60 }} />
+          </View>
+          {ligaTier && (
+            <View
+              style={[
+                s.tierBadge,
+                {
+                  backgroundColor: colors.cardBackground,
+                  borderColor: colors.borderStrong,
+                },
+              ]}
+            >
+              <Ionicons
+                name="trophy"
+                size={12}
+                color={colors.gold}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[s.tierBadgeText, { color: colors.gold }]}>
+                {ligaTier}
+              </Text>
+            </View>
           )}
         </View>
 
@@ -314,9 +160,112 @@ export default function PremiosScreen() {
           </View>
         )}
 
+        {/* ── Estado: sin datos suficientes ── */}
+        {!loading && !error && sinDatos && (
+          <View style={s.sinDatosContainer}>
+            <Text style={s.sinDatosEmoji}>🏦</Text>
+            <Text style={s.sinDatosTitle}>
+              Aún no tienes premios disponibles
+            </Text>
+            <Text style={s.sinDatosSub}>
+              Interactúa más con AI-Bank para que el modelo pueda personalizar
+              tu premio de temporada.
+            </Text>
+
+            {/* Cómo ganar puntos */}
+            <Text style={s.howTitle}>¿Cómo ganar mAiles y premios?</Text>
+
+            <View style={s.howCard}>
+              <Text style={s.howEmoji}>⭐</Text>
+              <View style={s.howInfo}>
+                <Text style={s.howHeading}>Gana mAiles con cada compra</Text>
+                <Text style={s.howDesc}>
+                  Por cada $100 que gastes con tu tarjeta AI-Bank obtienes{" "}
+                  <Text style={s.howHighlight}>10 mAiles</Text>.
+                </Text>
+              </View>
+            </View>
+
+            <View style={s.howCard}>
+              <Text style={s.howEmoji}>🃏</Text>
+              <View style={s.howInfo}>
+                <Text style={s.howHeading}>Cromos del álbum FIFA 2026</Text>
+                <Text style={s.howDesc}>
+                  Por cada <Text style={s.howHighlight}>$20 gastados</Text>{" "}
+                  obtienes un cromo aleatorio. ¡Colecciónalos todos!
+                </Text>
+              </View>
+            </View>
+
+            <View style={s.howCard}>
+              <Text style={s.howEmoji}>✈️</Text>
+              <View style={s.howInfo}>
+                <Text style={s.howHeading}>
+                  Premio mayor: ¡Viaje al Mundial!
+                </Text>
+                <Text style={s.howDesc}>
+                  Si completas el álbum FIFA 2026 ganas un{" "}
+                  <Text style={s.howHighlight}>
+                    viaje todo incluido al Mundial
+                  </Text>
+                  . Vuelo, hospedaje y entradas.
+                </Text>
+              </View>
+            </View>
+
+            {/* Medallas y descuentos */}
+            <Text style={s.howTitle}>
+              Sube de medalla y desbloquea descuentos
+            </Text>
+            <Text style={s.sinDatosSub}>
+              Tus mAiles te hacen subir de medalla. A mayor medalla, mayor
+              descuento en empresas aliadas de AI-Bank:
+            </Text>
+
+            <View style={s.medallaTable}>
+              {[
+                {
+                  medalla: "🥉 Bronce",
+                  desc: "5%",
+                  ejemplos: "Supermaxi, Fybeca",
+                },
+                {
+                  medalla: "🥈 Plata",
+                  desc: "10%",
+                  ejemplos: "KFC Ecuador, Marathon Sports",
+                },
+                {
+                  medalla: "🥇 Oro",
+                  desc: "15%",
+                  ejemplos: "De Prati, Cinemark Ecuador",
+                },
+              ].map((row) => (
+                <View key={row.medalla} style={s.medallaRow}>
+                  <View style={s.medallaLeft}>
+                    <Text style={s.medallaIcon}>{row.medalla}</Text>
+                  </View>
+                  <View style={s.medallaRight}>
+                    <Text style={s.medallaDesc}>{row.desc} descuento</Text>
+                    <Text style={s.medallaEjemplos}>{row.ejemplos}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={s.retryBtn}
+              onPress={() => router.replace("/(tabs)/banco")}
+            >
+              <Text style={s.retryBtnText}>
+                Ir a hacer mi primera transacción
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ── Estado: resultado ── */}
-        {!loading && !error && result && (
-          <View key={`result-content-${result.categoria}`}>
+        {!loading && !error && !sinDatos && result && (
+          <>
             {/* Tarjeta principal del premio */}
             <View style={[s.prizeCard, { borderColor: categoriaColor }]}>
               <View
@@ -450,291 +399,339 @@ export default function PremiosScreen() {
             )}
 
             <View style={{ height: 12 }} />
-          </View>
+          </>
         )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Bottom Nav */}
-      <View style={s.bottomNav}>
-        <TouchableOpacity
-          style={s.navItem}
-          onPress={() => router.replace("/(tabs)")}
-        >
-          <Text style={s.navIcon}>🏠</Text>
-          <Text style={s.navLabel}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={s.navItem}
-          onPress={() => router.replace("/(tabs)/banco")}
-        >
-          <Text style={s.navIcon}>🏦</Text>
-          <Text style={s.navLabel}>Banco</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={s.navCenter}
-          onPress={() => router.replace("/(tabs)/mundial")}
-        >
-          <View style={s.navCenterBtn}>
-            <Text style={s.navCenterIcon}>⚽</Text>
-          </View>
-          <Text style={s.navCenterLabel}>Mundial</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={s.navItem}
-          onPress={() => router.replace("/(tabs)/grupo")}
-        >
-          <Text style={s.navIcon}>👥</Text>
-          <Text style={s.navLabel}>Grupo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={s.navItem}
-          onPress={() => router.replace("/(tabs)/perfil")}
-        >
-          <Text style={s.navIcon}>👤</Text>
-          <Text style={s.navLabel}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNav active="premios" />
     </SafeAreaView>
   );
 }
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#071325" },
-  scroll: { paddingHorizontal: 20 },
+function getStyles(colors: ReturnType<typeof useTheme>["colors"]) {
+  const isDark = colors.background === "#071325";
 
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 16,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#1f2a3d",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 0.5,
-    borderColor: "#424655",
-  },
-  backIcon: { color: "#b2c5ff", fontSize: 24, lineHeight: 30, marginTop: -2 },
-  headerCenter: { alignItems: "center" },
-  headerTitle: { color: "#d7e3fc", fontSize: 18, fontWeight: "800" },
-  headerSub: { color: "#8c90a1", fontSize: 11, marginTop: 1 },
-  tierBadge: {
-    backgroundColor: "#1f2a3d",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 0.5,
-    borderColor: "#ffd65b55",
-  },
-  tierBadgeText: { color: "#ffd65b", fontSize: 10, fontWeight: "700" },
+  // Mejora de contraste en modo oscuro
+  const textSecondaryContrast = isDark ? "#a8b0c4" : colors.textSecondary;
+  const textMutedContrast = isDark ? "#7a8499" : colors.textMuted;
 
-  // Estados
-  stateContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
-  stateTitle: {
-    color: "#d7e3fc",
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  stateSub: {
-    color: "#8c90a1",
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  retryBtn: {
-    marginTop: 24,
-    backgroundColor: "#b2c5ff",
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  retryBtnText: { color: "#071325", fontSize: 14, fontWeight: "800" },
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.background },
+    scroll: { paddingHorizontal: 20 },
 
-  // Tarjeta principal
-  prizeCard: {
-    borderRadius: 24,
-    borderWidth: 1.5,
-    padding: 24,
-    marginTop: 8,
-    marginBottom: 16,
-    alignItems: "center",
-    overflow: "hidden",
-    backgroundColor: "#101c2e",
-  },
-  prizeCardGlow: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 24,
-  },
-  categoryBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: 20,
-  },
-  categoryBadgeIcon: { fontSize: 14 },
-  categoryBadgeText: { fontSize: 12, fontWeight: "700" },
-  prizeEmoji: { fontSize: 64, marginBottom: 12 },
-  prizeName: {
-    color: "#d7e3fc",
-    fontSize: 20,
-    fontWeight: "800",
-    textAlign: "center",
-    marginBottom: 20,
-    lineHeight: 28,
-  },
-  metricsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 0,
-    backgroundColor: "#0d1829",
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    width: "100%",
-    justifyContent: "center",
-  },
-  metricItem: { alignItems: "center", flex: 1 },
-  metricValue: { fontSize: 26, fontWeight: "900" },
-  metricLabel: {
-    color: "#8c90a1",
-    fontSize: 10,
-    fontWeight: "600",
-    marginTop: 2,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  metricDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: "#1f2a3d",
-    marginHorizontal: 12,
-  },
+    // Header
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 16,
+    },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+    backBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.cardBackground,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 0.5,
+      borderColor: colors.borderStrong,
+    },
+    greeting: {
+      color: isDark ? "#f0f5ff" : colors.textPrimary,
+      fontSize: 18,
+      fontWeight: "800",
+    },
+    subGreeting: {
+      color: textSecondaryContrast,
+      fontSize: 11,
+      fontWeight: "600",
+      marginTop: 2,
+    },
+    tierBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 0.5,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    tierBadgeText: { fontSize: 10, fontWeight: "700" },
 
-  // Secciones
-  section: {
-    backgroundColor: "#101c2e",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 0.5,
-    borderColor: "#1f2a3d",
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 14,
-  },
-  sectionIcon: { fontSize: 16 },
-  sectionTitle: { color: "#d7e3fc", fontSize: 15, fontWeight: "700" },
+    // Estados
+    stateContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 60,
+      paddingHorizontal: 20,
+    },
+    stateTitle: {
+      color: isDark ? "#f0f5ff" : colors.textPrimary,
+      fontSize: 18,
+      fontWeight: "700",
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    stateSub: {
+      color: textSecondaryContrast,
+      fontSize: 13,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    retryBtn: {
+      marginTop: 24,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 28,
+      paddingVertical: 12,
+      borderRadius: 20,
+    },
+    retryBtnText: { color: colors.background, fontSize: 14, fontWeight: "800" },
 
-  // Razones
-  reasonsList: { gap: 10 },
-  reasonItem: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  reasonDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
-  reasonText: { color: "#c2c6d8", fontSize: 13, flex: 1, lineHeight: 20 },
+    // Tarjeta principal
+    prizeCard: {
+      borderRadius: 24,
+      borderWidth: 1.5,
+      padding: 24,
+      marginTop: 8,
+      marginBottom: 16,
+      alignItems: "center",
+      overflow: "hidden",
+      backgroundColor: isDark ? "#0d1621" : colors.cardBackground,
+      borderColor: isDark ? "#2a3548" : colors.borderStrong,
+    },
+    prizeCardGlow: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      borderRadius: 24,
+    },
+    categoryBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      marginBottom: 20,
+      backgroundColor: isDark ? "#1a2a3f" : "transparent",
+      borderColor: isDark ? "#3a4f6f" : colors.borderMedium,
+    },
+    categoryBadgeIcon: { fontSize: 14 },
+    categoryBadgeText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: isDark ? "#a8b0c4" : colors.textSecondary,
+    },
+    prizeEmoji: { fontSize: 64, marginBottom: 12 },
+    prizeName: {
+      color: isDark ? "#f0f5ff" : colors.textPrimary,
+      fontSize: 20,
+      fontWeight: "800",
+      textAlign: "center",
+      marginBottom: 20,
+      lineHeight: 28,
+    },
+    metricsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 0,
+      backgroundColor: isDark ? "#0c1420" : colors.backgroundSecondary,
+      borderRadius: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      width: "100%",
+      justifyContent: "center",
+      borderWidth: 0.5,
+      borderColor: isDark ? "#2a3548" : colors.borderMedium,
+    },
+    metricItem: { alignItems: "center", flex: 1 },
+    metricValue: {
+      fontSize: 26,
+      fontWeight: "900",
+      color: isDark ? "#f0f5ff" : colors.textPrimary,
+    },
+    metricLabel: {
+      color: textSecondaryContrast,
+      fontSize: 10,
+      fontWeight: "600",
+      marginTop: 2,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    metricDivider: {
+      width: 1,
+      height: 36,
+      backgroundColor: isDark ? "#2a3548" : colors.borderMedium,
+      marginHorizontal: 12,
+    },
 
-  // Barras de categoría
-  catRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
-  },
-  catIcon: { fontSize: 18, width: 24, textAlign: "center" },
-  catBarContainer: { flex: 1 },
-  catLabel: {
-    color: "#c2c6d8",
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  catBarTrack: {
-    height: 6,
-    backgroundColor: "#1f2a3d",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  catBarFill: { height: "100%", borderRadius: 3 },
-  catPct: { fontSize: 13, fontWeight: "700", width: 38, textAlign: "right" },
+    // Secciones
+    section: {
+      backgroundColor: isDark ? "#0d1621" : colors.cardBackground,
+      borderRadius: 20,
+      padding: 18,
+      marginBottom: 12,
+      borderWidth: 0.5,
+      borderColor: isDark ? "#2a3548" : colors.borderMedium,
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 14,
+    },
+    sectionIcon: { fontSize: 16 },
+    sectionTitle: {
+      color: isDark ? "#f0f5ff" : colors.textPrimary,
+      fontSize: 15,
+      fontWeight: "700",
+    },
 
-  // Alternativas
-  altItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#1f2a3d",
-  },
-  altEmoji: { fontSize: 28 },
-  altInfo: { flex: 1 },
-  altName: { color: "#d7e3fc", fontSize: 14, fontWeight: "600" },
-  altAfinidad: { color: "#8c90a1", fontSize: 11, marginTop: 2 },
-  altBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  altBadgeText: { fontSize: 10, fontWeight: "700" },
+    // Razones
+    reasonsList: { gap: 10 },
+    reasonItem: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+    reasonDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
+    reasonText: {
+      color: textSecondaryContrast,
+      fontSize: 13,
+      flex: 1,
+      lineHeight: 20,
+    },
 
-  // Bottom Nav
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(7,19,37,0.95)",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingBottom: 24,
-    borderTopWidth: 0.5,
-    borderTopColor: "#1f2a3d",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
-  navItem: { alignItems: "center", gap: 2 },
-  navIcon: { fontSize: 22, opacity: 0.5 },
-  navLabel: { color: "#d7e3fc", fontSize: 9, fontWeight: "500", opacity: 0.5 },
-  navCenter: { alignItems: "center", marginTop: -20 },
-  navCenterBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#b2c5ff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-    borderWidth: 3,
-    borderColor: "#071325",
-  },
-  navCenterIcon: { fontSize: 26 },
-  navCenterLabel: { color: "#b2c5ff", fontSize: 9, fontWeight: "700" },
-});
+    // Barras de categoría
+    catRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 12,
+    },
+    catIcon: { fontSize: 18, width: 24, textAlign: "center" },
+    catBarContainer: { flex: 1 },
+    catLabel: {
+      color: textSecondaryContrast,
+      fontSize: 12,
+      fontWeight: "600",
+      marginBottom: 4,
+    },
+    catBarTrack: {
+      height: 6,
+      backgroundColor: isDark ? "#2a3548" : colors.borderMedium,
+      borderRadius: 3,
+      overflow: "hidden",
+    },
+    catBarFill: { height: "100%", borderRadius: 3 },
+    catPct: { fontSize: 13, fontWeight: "700", width: 38, textAlign: "right" },
+
+    // Alternativas
+    altItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingVertical: 12,
+      borderBottomWidth: 0.5,
+      borderBottomColor: isDark ? "#2a3548" : colors.borderMedium,
+    },
+    altEmoji: { fontSize: 28 },
+    altInfo: { flex: 1 },
+    altName: {
+      color: isDark ? "#f0f5ff" : colors.textPrimary,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    altAfinidad: { color: textSecondaryContrast, fontSize: 11, marginTop: 2 },
+    altBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    altBadgeText: { fontSize: 10, fontWeight: "700" },
+
+    // Sin datos
+    sinDatosContainer: {
+      paddingTop: 16,
+      paddingBottom: 24,
+    },
+    sinDatosEmoji: { fontSize: 56, textAlign: "center", marginBottom: 12 },
+    sinDatosTitle: {
+      color: isDark ? "#f0f5ff" : colors.textPrimary,
+      fontSize: 20,
+      fontWeight: "800",
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    sinDatosSub: {
+      color: textSecondaryContrast,
+      fontSize: 13,
+      textAlign: "center",
+      lineHeight: 20,
+      marginBottom: 20,
+      paddingHorizontal: 4,
+    },
+    howTitle: {
+      color: isDark ? "#e8f0ff" : colors.primary,
+      fontSize: 14,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginBottom: 12,
+      marginTop: 16,
+    },
+    howCard: {
+      backgroundColor: isDark ? "#121d2f" : colors.backgroundSecondary,
+      borderRadius: 16,
+      padding: 16,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      marginBottom: 10,
+      borderWidth: 0.5,
+      borderColor: isDark ? "#2a3548" : colors.borderMedium,
+    },
+    howEmoji: { fontSize: 28, marginTop: 2 },
+    howInfo: { flex: 1 },
+    howHeading: {
+      color: isDark ? "#f0f5ff" : colors.textPrimary,
+      fontSize: 14,
+      fontWeight: "700",
+      marginBottom: 4,
+    },
+    howDesc: { color: textSecondaryContrast, fontSize: 13, lineHeight: 19 },
+    howHighlight: {
+      color: isDark ? "#ffc857" : colors.gold,
+      fontWeight: "700",
+    },
+    medallaTable: {
+      backgroundColor: isDark ? "#0c1420" : colors.backgroundSecondary,
+      borderRadius: 16,
+      overflow: "hidden",
+      marginBottom: 20,
+      borderWidth: 0.5,
+      borderColor: isDark ? "#2a3548" : colors.borderMedium,
+    },
+    medallaRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: 14,
+      borderBottomWidth: 0.5,
+      borderBottomColor: isDark ? "#2a3548" : colors.borderMedium,
+    },
+    medallaLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+    medallaIcon: { fontSize: 20 },
+    medallaRight: { alignItems: "flex-end" },
+    medallaDesc: {
+      color: isDark ? "#ffc857" : colors.gold,
+      fontSize: 14,
+      fontWeight: "800",
+    },
+    medallaEjemplos: { color: textMutedContrast, fontSize: 10, marginTop: 2 },
+  });
+}

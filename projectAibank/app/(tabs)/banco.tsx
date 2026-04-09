@@ -3,9 +3,11 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import BancoUI from "../../components/BancoUI";
+import { useLigaMedal } from "../../lib/useLigaMedal";
 import { supabase } from "../../lib/supabase";
 
 export default function BancoScreen() {
+  const { ligaNombre, medallaNombre, medallaActual } = useLigaMedal();
   const [userName, setUserName] = useState("");
   const [saldo, setSaldo] = useState(4280.5);
   const [userId, setUserId] = useState<number | null>(null);
@@ -196,6 +198,9 @@ export default function BancoScreen() {
   return (
     <BancoUI
       userName={userName}
+      ligaNombre={ligaNombre}
+      medallaNombre={medallaNombre}
+      medallaActual={medallaActual}
       saldo={saldo}
       numeroCuenta={numeroCuenta}
       transactions={transactions}

@@ -23,6 +23,13 @@ export default function AlbumScreen() {
   }, []);
 
   async function loadData() {
+    // Cargar todos los stickers primero (datos públicos, no requieren auth)
+    const { data: stickers } = await supabase
+      .from("stickers")
+      .select("*")
+      .order("rareza", { ascending: false });
+    if (stickers) setTodosStickers(stickers);
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -36,12 +43,6 @@ export default function AlbumScreen() {
 
     if (!userData) return;
     setUserId(userData.id);
-
-    const { data: stickers } = await supabase
-      .from("stickers")
-      .select("*")
-      .order("rareza", { ascending: false });
-    if (stickers) setTodosStickers(stickers);
 
     const { data: misS } = await supabase
       .from("user_stickers")

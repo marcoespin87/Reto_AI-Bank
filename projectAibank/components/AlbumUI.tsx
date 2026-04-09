@@ -177,7 +177,7 @@ export default function AlbumUI({
                 activeOpacity={lo_tengo ? 0.8 : 1}
               >
                 {lo_tengo ? (
-                  <View key={`sticker-content-${sticker.id}`}>
+                  <View key={`sticker-content-${sticker.id}`} style={{ flex: 1 }}>
                     <Image
                       source={{ uri: sticker.imagen_url }}
                       style={s.stickerImage}

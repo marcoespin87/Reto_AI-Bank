@@ -16,6 +16,9 @@ import SobreModal from "./SobreModal";
 
 interface BancoUIProps {
   userName: string;
+  ligaNombre: string;
+  medallaNombre: string;
+  medallaActual: number;
   saldo: number;
   numeroCuenta: string;
   transactions: any[];
@@ -67,6 +70,9 @@ const modalConfig = {
 
 export default function BancoUI({
   userName,
+  ligaNombre,
+  medallaNombre,
+  medallaActual,
   saldo,
   numeroCuenta,
   transactions,
@@ -109,9 +115,14 @@ export default function BancoUI({
               <Text style={s.subGreeting}>SECCIÓN BANCO</Text>
             </View>
           </View>
-          <TouchableOpacity style={s.leagueBadge}>
-            <Text style={s.leagueBadgeText}>Liga Plata • Medalla 3</Text>
-          </TouchableOpacity>
+          {(ligaNombre || medallaNombre) && (
+            <TouchableOpacity style={s.leagueBadge}>
+              <Ionicons name="trophy-outline" size={11} color={colors.primary} style={{ marginRight: 4 }} />
+              <Text style={s.leagueBadgeText}>
+                {[ligaNombre, medallaNombre || `Medalla ${medallaActual}`].filter(Boolean).join(' • ')}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Balance Card */}
@@ -333,6 +344,9 @@ function getStyles(
     typeof import("../context/ThemeContext").useTheme
   >["colors"],
 ) {
+  // Detectar modo: si primary es azul claro (#b2c5ff) es DARK, si es #0052cc es LIGHT
+  const isDark = colors.primary === "#b2c5ff";
+
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.background },
     scroll: { paddingHorizontal: 20 },
@@ -392,7 +406,9 @@ function getStyles(
       width: 180,
       height: 180,
       borderRadius: 90,
-      backgroundColor: "rgba(255,255,255,0.12)",
+      backgroundColor: isDark
+        ? "rgba(255,255,255,0.12)"
+        : "rgba(255,255,255,0.15)",
     },
     cardPatternCircle2: {
       position: "absolute",
@@ -401,7 +417,9 @@ function getStyles(
       width: 120,
       height: 120,
       borderRadius: 60,
-      backgroundColor: "rgba(255,214,91,0.15)",
+      backgroundColor: isDark
+        ? "rgba(255,214,91,0.15)"
+        : "rgba(255,214,91,0.2)",
     },
     cardPatternLine: {
       position: "absolute",
@@ -409,7 +427,7 @@ function getStyles(
       left: 0,
       right: 0,
       height: 70,
-      backgroundColor: "rgba(0,0,0,0.06)",
+      backgroundColor: isDark ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.08)",
     },
     cardTop: {
       flexDirection: "row",
@@ -417,32 +435,34 @@ function getStyles(
       marginBottom: 20,
     },
     cardType: {
-      color: "#002b73",
+      color: isDark ? "#002b73" : "#ffffff",
       fontSize: 12,
       fontWeight: "700",
       letterSpacing: 0.5,
+      opacity: isDark ? 1 : 0.9,
     },
     cardBrand: {
-      color: "#002b73",
+      color: isDark ? "#002b73" : "#ffffff",
       fontSize: 22,
       fontWeight: "900",
       fontStyle: "italic",
+      opacity: isDark ? 1 : 0.95,
     },
     cardMid: { marginBottom: 16 },
     cardBalanceLabel: {
-      color: "rgba(0,43,115,0.65)",
+      color: isDark ? "rgba(0,43,115,0.65)" : "rgba(255,255,255,0.75)",
       fontSize: 11,
       fontWeight: "500",
       marginBottom: 2,
     },
     cardBalance: {
-      color: "#002b73",
+      color: isDark ? "#002b73" : "#ffffff",
       fontSize: 36,
       fontWeight: "800",
       letterSpacing: -1,
-      textShadowColor: "rgba(0,43,115,0.15)",
+      textShadowColor: isDark ? "rgba(0,43,115,0.15)" : "rgba(0,0,0,0.2)",
       textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 4,
+      textShadowRadius: isDark ? 4 : 3,
     },
     cardBottom: {
       flexDirection: "row",
@@ -451,13 +471,18 @@ function getStyles(
     },
     cardNumberWrap: {},
     cardNumber: {
-      color: "#002b73",
+      color: isDark ? "#002b73" : "#ffffff",
       fontFamily: "monospace",
       fontSize: 13,
       letterSpacing: 3,
       fontWeight: "600",
+      opacity: isDark ? 1 : 0.85,
     },
-    cardCopyHint: { color: "rgba(0,43,115,0.45)", fontSize: 9, marginTop: 2 },
+    cardCopyHint: {
+      color: isDark ? "rgba(0,43,115,0.45)" : "rgba(255,255,255,0.65)",
+      fontSize: 9,
+      marginTop: 2,
+    },
     cardChip: { flexDirection: "row" },
     chipCircle1: {
       width: 26,
@@ -514,16 +539,22 @@ function getStyles(
       paddingVertical: 6,
       borderRadius: 20,
       backgroundColor: colors.cardBackground,
-      borderWidth: 0.5,
+      borderWidth: 1,
       borderColor: colors.borderStrong,
     },
-    periodBtnActive: { backgroundColor: colors.primary },
+    periodBtnActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
     periodBtnText: {
       color: colors.textSecondary,
       fontSize: 12,
       fontWeight: "600",
     },
-    periodBtnTextActive: { color: "#002b73", fontWeight: "700" },
+    periodBtnTextActive: {
+      color: colors.background,
+      fontWeight: "800",
+    },
 
     empty: { alignItems: "center", padding: 40, gap: 12 },
     emptyIcon: { fontSize: 40 },

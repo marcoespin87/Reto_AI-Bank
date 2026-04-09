@@ -2,9 +2,11 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Animated } from "react-native";
 import MundialUI, { PARTIDO } from "../../components/MundialUI";
+import { useLigaMedal } from "../../lib/useLigaMedal";
 import { supabase } from "../../lib/supabase";
 
 export default function MundialScreen() {
+  const { ligaNombre, medallaNombre, medallaActual } = useLigaMedal();
   const [userId, setUserId] = useState<number | null>(null);
   const [golesLocal, setGolesLocal] = useState(1);
   const [golesVisitante, setGolesVisitante] = useState(0);
@@ -85,7 +87,10 @@ export default function MundialScreen() {
       return;
     }
     if (prediccionEnviada) {
-      Alert.alert("Ya predijiste", "Solo puedes enviar una predicción por partido");
+      Alert.alert(
+        "Ya predijiste",
+        "Solo puedes enviar una predicción por partido",
+      );
       return;
     }
 
@@ -122,6 +127,9 @@ export default function MundialScreen() {
 
   return (
     <MundialUI
+      ligaNombre={ligaNombre}
+      medallaNombre={medallaNombre}
+      medallaActual={medallaActual}
       golesLocal={golesLocal}
       golesVisitante={golesVisitante}
       prediccionEnviada={prediccionEnviada}

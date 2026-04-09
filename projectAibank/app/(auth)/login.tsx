@@ -1,25 +1,82 @@
-import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import LoginForm from "../../components/LoginForm";
 import { supabase } from "../../lib/supabase";
 
+type Screen = "splash" | "cedula" | "password" | "bienvenida";
+
+const EMAILS_PRUEBA = [
+  "usuario1@aibank.test",
+  "usuario2@aibank.test",
+  "usuario3@aibank.test",
+  "demo@aibank.test",
+];
+
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
+  const [screen, setScreen] = useState<Screen>("splash");
+  const [cedula, setCedula] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cedulaNotFound, setCedulaNotFound] = useState(false);
+
+  // Splash de 2 segundos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setScreen("cedula");
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  async function handleValidateCedula() {
+    if (!cedula.trim()) {
+      Alert.alert("Error", "Ingresa tu número de cédula");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Buscar usuario por cédula en Supabase
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, email, nombre")
+        .eq("cedula", cedula.trim())
+        .single();
+
+      if (error || !data) {
+        // Cédula no encontrada
+        setCedulaNotFound(true);
+        setScreen("bienvenida");
+      } else {
+        // Cédula encontrada
+        setEmail(data.email);
+        setScreen("password");
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "No pudimos validar tu cédula");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleLogin() {
     if (!email || !password) {
       Alert.alert("Error", "Completa todos los campos");
       return;
     }
+
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -29,42 +86,215 @@ export default function LoginScreen() {
     if (error) Alert.alert("Error", error.message);
   }
 
-  async function handleGoogleLogin() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: "projectaibank://",
-        skipBrowserRedirect: true,
-      },
-    });
-
-    if (error) {
-      Alert.alert("Error", error.message);
-      return;
-    }
-
-    if (data?.url) {
-      await WebBrowser.openBrowserAsync(data.url);
-    }
+  function handleReset() {
+    setCedula("");
+    setPassword("");
+    setEmail("");
+    setCedulaNotFound(false);
+    setScreen("cedula");
   }
 
+  // SPLASH
+  if (screen === "splash") {
+    return (
+      <SafeAreaView style={s.root}>
+        <View style={s.splashContainer}>
+          <View style={s.glowTop} />
+          <View style={s.glowBottom} />
+
+          <View style={s.splashContent}>
+            <View style={s.logoIconWrap}>
+              <Text style={s.logoIconText}>⚽</Text>
+            </View>
+            <Text style={s.logoTitle}>AI-Bank</Text>
+            <Text style={s.logoSub}>mAiles</Text>
+
+            <View style={s.loaderWrap}>
+              <ActivityIndicator size="small" color="#b2c5ff" />
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // CÉDULA
+  if (screen === "cedula") {
+    return (
+      <SafeAreaView style={s.root}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <ScrollView
+            contentContainerStyle={s.scroll}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={s.glowTop} />
+            <View style={s.glowBottom} />
+
+            <View style={s.logoArea}>
+              <View style={s.logoIconWrap}>
+                <Text style={s.logoIconText}>⚽</Text>
+              </View>
+              <Text style={s.logoTitle}>AI-Bank</Text>
+              <Text style={s.logoSub}>mAiles</Text>
+            </View>
+
+            <View style={s.card}>
+              <View style={s.badge}>
+                <Text style={s.badgeText}>VALIDACIÓN DE IDENTIDAD</Text>
+              </View>
+
+              <Text style={s.label}>NÚMERO DE CÉDULA</Text>
+              <TextInput
+                style={s.input}
+                placeholder="Ej: 1234567890"
+                placeholderTextColor="#424655"
+                value={cedula}
+                onChangeText={setCedula}
+                keyboardType="number-pad"
+              />
+
+              <TouchableOpacity
+                style={[s.btnPrimary, loading && { opacity: 0.7 }]}
+                onPress={handleValidateCedula}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#002b73" />
+                ) : (
+                  <Text style={s.btnPrimaryText}>Continuar ✦</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  // CONTRASEÑA
+  if (screen === "password") {
+    return (
+      <SafeAreaView style={s.root}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <ScrollView
+            contentContainerStyle={s.scroll}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={s.glowTop} />
+            <View style={s.glowBottom} />
+
+            <View style={s.logoArea}>
+              <View style={s.logoIconWrap}>
+                <Text style={s.logoIconText}>⚽</Text>
+              </View>
+              <Text style={s.logoTitle}>AI-Bank</Text>
+              <Text style={s.logoSub}>mAiles</Text>
+            </View>
+
+            <View style={s.card}>
+              <View style={s.badge}>
+                <Text style={s.badgeText}>INGRESA TU CONTRASEÑA</Text>
+              </View>
+
+              <Text style={s.label}>CONTRASEÑA</Text>
+              <TextInput
+                style={s.input}
+                placeholder="••••••••"
+                placeholderTextColor="#424655"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+
+              <TouchableOpacity
+                style={[s.btnPrimary, loading && { opacity: 0.7 }]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#002b73" />
+                ) : (
+                  <Text style={s.btnPrimaryText}>Ingresar ✦</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={s.btnSecondary}
+                onPress={handleReset}
+                disabled={loading}
+              >
+                <Text style={s.btnSecondaryText}>← Volver</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  // BIENVENIDA / CÉDULA NO ENCONTRADA
   return (
     <SafeAreaView style={s.root}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+      <ScrollView
+        contentContainerStyle={s.scroll}
+        showsVerticalScrollIndicator={false}
       >
-        <LoginForm
-          email={email}
-          setEmail={setEmail}
-          password={password}
-          setPassword={setPassword}
-          loading={loading}
-          onLogin={handleLogin}
-          onGoogleLogin={handleGoogleLogin}
-          s={s}
-        />
-      </KeyboardAvoidingView>
+        <View style={s.glowTop} />
+        <View style={s.glowBottom} />
+
+        <View style={s.logoArea}>
+          <View style={s.logoIconWrap}>
+            <Text style={s.logoIconText}>⚽</Text>
+          </View>
+          <Text style={s.logoTitle}>Bienvenido</Text>
+          <Text style={s.logoSub}>Sistema de Pruebas</Text>
+        </View>
+
+        <View style={s.card}>
+          {cedulaNotFound ? (
+            <>
+              <Text style={s.errorMessage}>
+                ❌ Lamentablemente, la cédula ingresada no se encuentra
+                registrada
+              </Text>
+
+              <Text style={s.sectionTitle}>Correos de Prueba Disponibles:</Text>
+
+              {EMAILS_PRUEBA.map((email, idx) => (
+                <View key={idx} style={s.emailCard}>
+                  <Text style={s.emailText}>{email}</Text>
+                </View>
+              ))}
+
+              <TouchableOpacity style={s.btnPrimary} onPress={handleReset}>
+                <Text style={s.btnPrimaryText}>Intentar de Nuevo</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={s.welcomeMessage}>
+                ✓ Bienvenido al Sistema de Pruebas
+              </Text>
+
+              <Text style={s.sectionTitle}>
+                Correos Disponibles para Pruebas:
+              </Text>
+
+              {EMAILS_PRUEBA.map((email, idx) => (
+                <View key={idx} style={s.emailCard}>
+                  <Text style={s.emailText}>{email}</Text>
+                </View>
+              ))}
+            </>
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -72,6 +302,11 @@ export default function LoginScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#071325" },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingVertical: 40 },
+
+  // Splash
+  splashContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  splashContent: { alignItems: "center", gap: 24 },
+  loaderWrap: { marginTop: 20 },
 
   // Glows
   glowTop: {
@@ -190,6 +425,60 @@ const s = StyleSheet.create({
     backgroundColor: "#b2c5ff",
   },
   btnPrimaryText: { color: "#002b73", fontWeight: "800", fontSize: 16 },
+
+  btnSecondary: {
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginTop: 12,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#424655",
+  },
+  btnSecondaryText: { color: "#b2c5ff", fontWeight: "600", fontSize: 15 },
+
+  // Mensajes
+  errorMessage: {
+    color: "#ff6b6b",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  welcomeMessage: {
+    color: "#4ecca3",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+
+  sectionTitle: {
+    color: "#b2c5ff",
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 12,
+    marginTop: 8,
+  },
+
+  emailCard: {
+    backgroundColor: "#030e20",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#ffd65b",
+    borderWidth: 0.5,
+    borderColor: "rgba(178,197,255,0.1)",
+  },
+  emailText: {
+    color: "#d7e3fc",
+    fontSize: 14,
+    fontWeight: "500",
+    fontFamily: "Courier New",
+  },
 
   divider: {
     flexDirection: "row",
