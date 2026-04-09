@@ -6,7 +6,7 @@ import { useLigaMedal } from "../../lib/useLigaMedal";
 import { supabase } from "../../lib/supabase";
 
 export default function MundialScreen() {
-  const { ligaNombre, medallaNombre, medallaActual } = useLigaMedal();
+  const { ligaNombre, medallaNombre, medallaActual, posicionEnLiga } = useLigaMedal();
   const [userId, setUserId] = useState<number | null>(null);
   const [golesLocal, setGolesLocal] = useState(1);
   const [golesVisitante, setGolesVisitante] = useState(0);
@@ -130,6 +130,7 @@ export default function MundialScreen() {
       ligaNombre={ligaNombre}
       medallaNombre={medallaNombre}
       medallaActual={medallaActual}
+      posicionEnLiga={posicionEnLiga}
       golesLocal={golesLocal}
       golesVisitante={golesVisitante}
       prediccionEnviada={prediccionEnviada}

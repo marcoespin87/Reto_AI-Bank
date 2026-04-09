@@ -290,9 +290,6 @@ export default function GrupoView({
                       </Text>
                     </View>
                   ) : null}
-                  <View style={s.groupBadge}>
-                    <Text style={s.groupBadgeText}>LIGA PLATA</Text>
-                  </View>
                   <Text style={s.groupRank}>
                     {posicionEnLiga ? `#${posicionEnLiga} en liga` : '— en liga'}
                   </Text>
@@ -341,7 +338,7 @@ export default function GrupoView({
               </View>
               <View style={s.statCard}>
                 <Text style={s.statValue}>
-                  {miembros.length}/{grupo.max_miembros}
+                  {miembros.length}/5
                 </Text>
                 <Text style={s.statLabel}>Miembros</Text>
               </View>
@@ -509,7 +506,7 @@ export default function GrupoView({
                 </View>
               ))}
 
-              {miembros.length < grupo.max_miembros ? (
+              {miembros.length < 5 ? (
                 <TouchableOpacity
                   style={s.inviteSlot}
                   onPress={onCompartirCodigo}

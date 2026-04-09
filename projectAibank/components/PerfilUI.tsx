@@ -24,15 +24,15 @@ interface PerfilUIProps {
   mailes: number;
   fechaRegistro: string;
   predicciones: number;
-  rachaMax: number;
+  cromosObtenidos: number;
   medallaActual: number;
   estrellasActuales: number;
   medallaNombre: string;
   ligaNombre: string;
   comprasUmbral: number;
+  todasLigas: any[];
+  posicionEnLiga: number | null;
   refreshing: boolean;
-  beneficiosOpen: boolean;
-  setBeneficiosOpen: (open: boolean) => void;
   rotateAnim: Animated.Value;
   theme: string;
   onRefresh: () => void;
@@ -44,41 +44,6 @@ interface PerfilUIProps {
 // ============================================
 // CONSTANTES Y UTILIDADES
 // ============================================
-
-const medallas = [1, 2, 3, 4, 5, 6];
-
-const beneficios: Record<number, string[]> = {
-  1: ["Acceso básico a pronósticos", "Acumulación de mAiles x1.0"],
-  2: [
-    "Todo de Medalla 1",
-    "Multiplicador mAiles x1.1",
-    "Acceso a ligas grupales",
-  ],
-  3: [
-    "Todo de Medalla 2",
-    "Multiplicador mAiles x1.2",
-    "Acceso anticipado a preventas",
-    "Personalización de tarjeta digital",
-  ],
-  4: [
-    "Todo de Medalla 3",
-    "Multiplicador mAiles x1.5",
-    "Sala VIP en aeropuertos",
-    "Pronósticos exclusivos de semifinales",
-  ],
-  5: [
-    "Todo de Medalla 4",
-    "Multiplicador mAiles x2.0",
-    "Upgrades de vuelo",
-    "Experiencias exclusivas del Mundial",
-  ],
-  6: [
-    "Todo de Medalla 5",
-    "Multiplicador mAiles x3.0",
-    "Acceso a palco VIP",
-    "Beneficios ilimitados AI-Bank",
-  ],
-};
 
 function formatFecha(fecha: string) {
   if (!fecha) return "N/A";
@@ -101,6 +66,7 @@ export default function PerfilUI(props: PerfilUIProps) {
   const estrellasFill = props.estrellasActuales % 5;
   const progresoPct = (estrellasFill / 5) * 100;
   const medallaLabel = props.medallaNombre || `Medalla ${props.medallaActual}`;
+  const TOTAL_CROMOS = 28;
 
   return (
     <SafeAreaView style={s.root}>
@@ -135,14 +101,14 @@ export default function PerfilUI(props: PerfilUIProps) {
                 />
               </TouchableOpacity>
             </Animated.View>
-            {(props.ligaNombre || props.medallaNombre) && (
+            {props.ligaNombre ? (
               <View style={s.leagueBadge}>
                 <Ionicons name="trophy-outline" size={11} color={colors.primary} style={{ marginRight: 4 }} />
                 <Text style={s.leagueBadgeText}>
-                  {[props.ligaNombre, props.medallaNombre || `Medalla ${props.medallaActual}`].filter(Boolean).join(' • ')}
+                  {props.ligaNombre}{props.posicionEnLiga ? ` • #${props.posicionEnLiga} en liga` : ""}
                 </Text>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
 
@@ -200,9 +166,9 @@ export default function PerfilUI(props: PerfilUIProps) {
             },
             { value: "1", icon: "calendar" as const, label: "Temporadas" },
             {
-              value: props.rachaMax.toString(),
-              icon: "flame" as const,
-              label: "Racha Máx",
+              value: `${props.cromosObtenidos}/${TOTAL_CROMOS}`,
+              icon: "images" as const,
+              label: "Cromos",
             },
           ].map((stat, i) => (
             <View key={i} style={s.statCard}>
@@ -213,101 +179,49 @@ export default function PerfilUI(props: PerfilUIProps) {
           ))}
         </View>
 
-        {/* Medal History */}
+        {/* Mis Ligas */}
         <View style={s.sectionCard}>
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Mis medallas</Text>
-            <Text style={s.seeAll}>Ver todas</Text>
-          </View>
-          <View style={s.medalsRow}>
-            {medallas.map((m) => (
-              <View
-                key={m}
-                style={[
-                  s.medalItem,
-                  m === props.medallaActual && s.medalItemActive,
-                ]}
-              >
-                {m === props.medallaActual ? (
-                  <View style={s.medalCircleActive}>
-                    <Ionicons
-                      name="medal"
-                      size={24}
-                      color={colors.textOnGold}
-                    />
-                  </View>
-                ) : m < props.medallaActual ? (
-                  <View style={s.medalCircleDone}>
-                    <Ionicons name="medal" size={24} color={colors.gold} />
-                  </View>
-                ) : (
-                  <View style={s.medalCircleLocked}>
-                    <Ionicons
-                      name="lock-closed"
-                      size={20}
-                      color={colors.textMuted}
-                    />
-                  </View>
-                )}
-                {m === props.medallaActual ? (
-                  <Text style={s.medalCurrentLabel}>ACTUAL</Text>
-                ) : (
-                  <Text style={s.medalLabel}>M{m}</Text>
-                )}
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Benefits */}
-        <View style={s.sectionCard}>
-          <TouchableOpacity
-            style={s.sectionHeader}
-            onPress={() => props.setBeneficiosOpen(!props.beneficiosOpen)}
-          >
+          <View style={[s.sectionHeader, { marginBottom: 12 }]}>
             <View style={s.benefitsTitleRow}>
-              <Ionicons name="checkmark-circle" size={20} color={colors.gold} />
-              <Text style={s.sectionTitle}>
-                Beneficios Medalla {props.medallaActual}
-              </Text>
-            </View>
-            <Text style={s.chevron}>{props.beneficiosOpen ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-          {props.beneficiosOpen && (
-            <View style={s.benefitsList}>
-              {(beneficios[props.medallaActual] || []).map((b, i) => (
-                <View key={i} style={s.benefitItem}>
-                  <Ionicons
-                    name="checkmark"
-                    size={18}
-                    color={colors.gold}
-                    style={{ marginTop: 2 }}
-                  />
-                  <Text style={s.benefitText}>{b}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Next Medal Benefits */}
-        {props.medallaActual < 6 && (
-          <View style={[s.sectionCard, { opacity: 0.5 }]}>
-            <View style={s.sectionHeader}>
-              <View style={s.benefitsTitleRow}>
-                <Ionicons
-                  name="lock-closed"
-                  size={20}
-                  color={colors.textMuted}
-                />
-                <Text style={s.sectionTitle}>
-                  Beneficios Medalla {props.medallaActual + 1}
-                </Text>
-              </View>
-              <Text style={s.chevron}>▼</Text>
+              <Ionicons name="trophy-outline" size={20} color={colors.gold} />
+              <Text style={s.sectionTitle}>Mis Ligas</Text>
             </View>
           </View>
-        )}
+          {props.todasLigas.map((liga) => {
+            const esCurrent = liga.nombre === props.ligaNombre;
+            return (
+              <View key={liga.id} style={[s.ligaItem, esCurrent && s.ligaItemActive]}>
+                <View style={s.ligaLeft}>
+                  <Ionicons
+                    name={esCurrent ? "trophy" : "trophy-outline"}
+                    size={20}
+                    color={esCurrent ? colors.gold : colors.textMuted}
+                  />
+                  <Text style={[s.ligaNombreText, esCurrent && { color: colors.gold, fontWeight: "800" }]}>
+                    {liga.nombre}
+                  </Text>
+                </View>
+                {esCurrent && (
+                  <View style={s.ligaCurrentBadge}>
+                    <Text style={s.ligaCurrentText}>ACTUAL</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+          <View style={s.ligaInstructions}>
+            <Text style={s.ligaInstructionsTitle}>¿Cómo subir de liga?</Text>
+            <Text style={s.ligaInstructionsText}>
+              🥈 Acumula 5,000 mAiles grupales al final de la temporada para ascender a Plata.
+            </Text>
+            <Text style={s.ligaInstructionsText}>
+              🥇 Acumula 15,000 mAiles grupales al final de la temporada para ascender a Oro.
+            </Text>
+            <Text style={[s.ligaInstructionsText, { color: colors.textMuted, marginTop: 6 }]}>
+              ⚠️ No puedes cambiar de liga hasta que termine la temporada.
+            </Text>
+          </View>
+        </View>
 
         {/* Premio personalizado */}
         <TouchableOpacity
@@ -336,63 +250,43 @@ export default function PerfilUI(props: PerfilUIProps) {
 
         {/* Settings */}
         <View style={s.sectionCard}>
-          {[
-            {
-              ionicon: "notifications-outline" as const,
-              label: "Notificaciones",
-            },
-            { ionicon: "lock-closed-outline" as const, label: "Seguridad" },
-            {
-              ionicon: "globe-outline" as const,
-              label: "Idioma",
-              sub: "Español",
-            },
-          ].map((item) => (
-            <TouchableOpacity key={item.label} style={s.settingItem}>
-              <View style={s.settingLeft}>
-                <View style={s.settingIconWrap}>
-                  <Ionicons
-                    name={item.ionicon}
-                    size={20}
-                    color={colors.primary}
-                  />
-                </View>
-                <View>
-                  <Text style={s.settingLabel}>{item.label}</Text>
-                  {item.sub && <Text style={s.settingSub}>{item.sub}</Text>}
-                </View>
+          {/* Idioma - sin flecha */}
+          <View style={s.settingItem}>
+            <View style={s.settingLeft}>
+              <View style={s.settingIconWrap}>
+                <Ionicons name="globe-outline" size={20} color={colors.primary} />
               </View>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          ))}
-            <TouchableOpacity style={s.settingItem} onPress={props.onAbrirMenuTutorial}>
-              <View style={s.settingLeft}>
-                <View style={s.settingIconWrap}>
-                  <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
-                </View>
-                <View>
-                  <Text style={s.settingLabel}>¿Qué hay de nuevo?</Text>
-                  <Text style={s.settingSub}>Ver tutoriales y guías</Text>
-                </View>
+              <View>
+                <Text style={s.settingLabel}>Idioma</Text>
+                <Text style={s.settingSub}>Español</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={s.settingItem} onPress={props.handleLogout}>
-              <View style={s.settingLeft}>
-                <View style={[s.settingIconWrap, { backgroundColor: colors.errorDim }]}>
-                  <Ionicons name="log-out-outline" size={20} color={colors.error} />
-                </View>
-                <Text style={[s.settingLabel, { color: colors.error }]}>
-                  Cerrar sesión
-                </Text>
-              </View>
-            </TouchableOpacity>
+            </View>
           </View>
+
+          <TouchableOpacity style={s.settingItem} onPress={props.onAbrirMenuTutorial}>
+            <View style={s.settingLeft}>
+              <View style={s.settingIconWrap}>
+                <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={s.settingLabel}>¿Qué hay de nuevo?</Text>
+                <Text style={s.settingSub}>Ver tutoriales y guías</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.settingItem} onPress={props.handleLogout}>
+            <View style={s.settingLeft}>
+              <View style={[s.settingIconWrap, { backgroundColor: colors.errorDim }]}>
+                <Ionicons name="log-out-outline" size={20} color={colors.error} />
+              </View>
+              <Text style={[s.settingLabel, { color: colors.error }]}>
+                Cerrar sesión
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -622,16 +516,50 @@ function getStyles(colors: ReturnType<typeof useTheme>["colors"]) {
     medalLabel: { color: colors.textSecondary, fontSize: 9 },
 
     benefitsTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-    benefitsIcon: { fontSize: 16 }, // Removido - ahora usa Ionicons
-    benefitsList: { gap: 10 },
-    benefitItem: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-    benefitCheck: {
-      color: colors.gold,
-      fontSize: 14,
-      fontWeight: "700",
-      marginTop: 1,
+
+    ligaItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 12,
+      marginBottom: 6,
     },
-    benefitText: { color: colors.textPrimary, fontSize: 13, flex: 1 },
+    ligaItemActive: {
+      backgroundColor: colors.goldDim,
+      borderWidth: 1,
+      borderColor: colors.goldBorder,
+    },
+    ligaLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+    ligaNombreText: { color: colors.textSecondary, fontSize: 14, fontWeight: "600" },
+    ligaCurrentBadge: {
+      backgroundColor: colors.gold,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderRadius: 10,
+    },
+    ligaCurrentText: { color: colors.textOnGold, fontSize: 9, fontWeight: "800" },
+    ligaInstructions: {
+      marginTop: 12,
+      padding: 12,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 12,
+      borderWidth: 0.5,
+      borderColor: colors.borderMedium,
+      gap: 6,
+    },
+    ligaInstructionsTitle: {
+      color: colors.textPrimary,
+      fontSize: 12,
+      fontWeight: "700",
+      marginBottom: 4,
+    },
+    ligaInstructionsText: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      lineHeight: 18,
+    },
 
     prizeRow: {
       flexDirection: "row",

@@ -22,6 +22,7 @@ export interface ProgressData {
   comprasEstaSemana: number;
   // Group
   ligaNombre: string;
+  posicionEnLiga: number | null;
   grupoNombre: string | null;
   grupoMailesTotal: number;
   grupoMailesMeta: number;

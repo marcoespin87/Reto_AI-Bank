@@ -22,16 +22,17 @@ export default function PerfilScreen() {
   const [mailes, setMailes] = useState(0);
   const [fechaRegistro, setFechaRegistro] = useState('');
   const [predicciones, setPredicciones] = useState(0);
-  const [rachaMax, setRachaMax] = useState(0);
+  const [cromosObtenidos, setCromosObtenidos] = useState(0);
   const [medallaActual, setMedallaActual] = useState(1);
   const [estrellasActuales, setEstrellasActuales] = useState(0);
   const [medallaNombre, setMedallaNombre] = useState('');
   const [comprasUmbral, setComprasUmbral] = useState(5);
   const [ligaNombre, setLigaNombre] = useState('');
+  const [todasLigas, setTodasLigas] = useState<any[]>([]);
+  const [posicionEnLiga, setPosicionEnLiga] = useState<number | null>(null);
 
   // Estado UI
   const [refreshing, setRefreshing] = useState(false);
-  const [beneficiosOpen, setBeneficiosOpen] = useState(true);
 
   // Animación
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -58,30 +59,37 @@ export default function PerfilScreen() {
       setMailes(userData.mailes_acumulados || 0);
       setFechaRegistro(userData.fecha_registro || '');
 
-      const { count: predCount } = await supabase
-        .from('predictions')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userData.id);
+      const [predResult, stickersResult, memberResult, ligasResult] = await Promise.all([
+        supabase.from('predictions').select('*', { count: 'exact', head: true }).eq('user_id', userData.id),
+        supabase.from('user_stickers').select('sticker_id').eq('user_id', userData.id),
+        supabase
+          .from('group_members')
+          .select('medalla_actual, estrellas_actuales, group_id, groups(liga_id)')
+          .eq('user_id', userData.id)
+          .eq('estado', 'activo')
+          .maybeSingle(),
+        supabase.from('ligas').select('*').order('id', { ascending: true }),
+      ]);
 
-      setPredicciones(predCount || 0);
+      setPredicciones(predResult.count || 0);
+      if (ligasResult.data) setTodasLigas(ligasResult.data);
 
-      const { data: memberData } = await supabase
-        .from('group_members')
-        .select('medalla_actual, estrellas_actuales, group_id, groups(liga_id)')
-        .eq('user_id', userData.id)
-        .eq('estado', 'activo')
-        .maybeSingle();
+      // Cromos únicos obtenidos
+      if (stickersResult.data) {
+        const uniqueIds = new Set(stickersResult.data.map((s: any) => s.sticker_id));
+        setCromosObtenidos(uniqueIds.size);
+      }
 
+      const memberData = memberResult.data;
       if (memberData) {
         const medallaNum = memberData.medalla_actual ?? 1;
         const estrellasNum = memberData.estrellas_actuales ?? 0;
         setMedallaActual(medallaNum);
         setEstrellasActuales(estrellasNum);
-        setRachaMax(estrellasNum);
 
         const grupo = memberData.groups as any;
         if (grupo?.liga_id) {
-          const [{ data: medalData }, { data: ligaData }] = await Promise.all([
+          const [{ data: medalData }, { data: ligaData }, { data: todosGrupos }] = await Promise.all([
             supabase
               .from('liga_medals')
               .select('nombre_medalla, umbral_compras_por_estrella')
@@ -93,6 +101,10 @@ export default function PerfilScreen() {
               .select('nombre')
               .eq('id', grupo.liga_id)
               .maybeSingle(),
+            supabase
+              .from('groups')
+              .select('id, group_members!inner(estado, users(mailes_acumulados))')
+              .eq('liga_id', grupo.liga_id),
           ]);
 
           if (medalData) {
@@ -101,6 +113,18 @@ export default function PerfilScreen() {
           }
           if (ligaData) {
             setLigaNombre((ligaData as any).nombre ?? '');
+          }
+          if (todosGrupos && todosGrupos.length > 0) {
+            const ranking = todosGrupos
+              .map((g: any) => {
+                const activos = g.group_members?.filter((m: any) => m.estado === 'activo') || [];
+                const total = activos.reduce((sum: number, m: any) =>
+                  sum + (m.users?.mailes_acumulados || 0), 0);
+                return { id: g.id, total };
+              })
+              .sort((a: any, b: any) => b.total - a.total);
+            const pos = ranking.findIndex((g: any) => g.id === memberData.group_id) + 1;
+            setPosicionEnLiga(pos > 0 ? pos : null);
           }
         }
       }
@@ -141,22 +165,21 @@ export default function PerfilScreen() {
       mailes={mailes}
       fechaRegistro={fechaRegistro}
       predicciones={predicciones}
-      rachaMax={rachaMax}
+      cromosObtenidos={cromosObtenidos}
       medallaActual={medallaActual}
       estrellasActuales={estrellasActuales}
       medallaNombre={medallaNombre}
       ligaNombre={ligaNombre}
       comprasUmbral={comprasUmbral}
+      todasLigas={todasLigas}
+      posicionEnLiga={posicionEnLiga}
       refreshing={refreshing}
-      beneficiosOpen={beneficiosOpen}
-      setBeneficiosOpen={setBeneficiosOpen}
       rotateAnim={rotateAnim}
       theme={theme}
       onRefresh={onRefresh}
       onAbrirMenuTutorial={handleAbrirMenuTutorial}
       handleLogout={handleLogout}
       handleToggleTheme={handleToggleTheme}
-      
     />
   );
 }

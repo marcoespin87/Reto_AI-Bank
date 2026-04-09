@@ -100,7 +100,7 @@ export default function HomeUI({
               <Text style={s.subGreeting}>BIENVENIDO AL ESTADIO</Text>
             </View>
           </View>
-          {(progressData.ligaNombre || progressData.medallaNombre) && (
+          {progressData.ligaNombre ? (
             <TouchableOpacity style={s.leagueBadge}>
               <Ionicons
                 name="trophy-outline"
@@ -109,16 +109,11 @@ export default function HomeUI({
                 style={{ marginRight: 4 }}
               />
               <Text style={s.leagueBadgeText}>
-                {[
-                  progressData.ligaNombre,
-                  progressData.medallaNombre ||
-                    `Medalla ${progressData.medalla}`,
-                ]
-                  .filter(Boolean)
-                  .join(" • ")}
+                {progressData.ligaNombre}
+                {progressData.posicionEnLiga ? ` • #${progressData.posicionEnLiga} en liga` : ""}
               </Text>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
 
         {/* Bank Card — premium */}

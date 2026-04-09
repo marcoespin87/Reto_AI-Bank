@@ -121,7 +121,74 @@ export default function GrupoScreen() {
         .select("*")
         .eq("group_id", grupoData.id);
 
-      if (progData) setProgresos(progData);
+      // Calcular progreso dinámico basado en mailes del grupo
+      const totalMailesGrupo = (miembrosData || []).reduce(
+        (sum: number, m: any) => sum + (m.users?.mailes_acumulados || 0),
+        0
+      );
+
+      if (objData && objData.length > 0) {
+        const progActualizado: any[] = [];
+        for (const obj of objData) {
+          const existente = (progData || []).find(
+            (p: any) => p.objective_id === obj.id
+          );
+          const progresoAnterior = existente?.progreso_actual || 0;
+          const progresoNuevo = totalMailesGrupo;
+
+          // Actualizar en BD
+          try {
+            if (existente) {
+              await supabase
+                .from("group_objective_progress")
+                .update({ progreso_actual: progresoNuevo })
+                .eq("group_id", grupoData.id)
+                .eq("objective_id", obj.id);
+            } else {
+              await supabase
+                .from("group_objective_progress")
+                .insert({
+                  group_id: grupoData.id,
+                  objective_id: obj.id,
+                  progreso_actual: progresoNuevo,
+                });
+            }
+          } catch (_) {
+            // Ignorar errores de BD; el progreso in-memory es suficiente
+          }
+
+          // Dar puntos a todos si el objetivo se completó ahora
+          if (
+            progresoAnterior < obj.valor_objetivo &&
+            progresoNuevo >= obj.valor_objetivo &&
+            miembrosData &&
+            miembrosData.length > 0
+          ) {
+            await Promise.all(
+              miembrosData.map(async (m: any) => {
+                const currentMailes = m.users?.mailes_acumulados || 0;
+                await supabase
+                  .from("users")
+                  .update({
+                    mailes_acumulados:
+                      currentMailes + obj.recompensa_mailes,
+                  })
+                  .eq("id", m.user_id);
+              })
+            );
+          }
+
+          progActualizado.push({
+            ...(existente || {}),
+            objective_id: obj.id,
+            group_id: grupoData.id,
+            progreso_actual: progresoNuevo,
+          });
+        }
+        setProgresos(progActualizado);
+      } else if (progData) {
+        setProgresos(progData);
+      }
 
       // Calcular posición en liga
       const { data: todosGrupos } = await supabase

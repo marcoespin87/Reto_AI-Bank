@@ -27,6 +27,8 @@ export default function AlbumUI({
   getCantidad,
   DOLARES_POR_CROMO,
   TOTAL_ALBUM,
+  ligaNombre,
+  posicionEnLiga,
 }: any) {
   const RAREZA_CONFIG = {
     epico: {
@@ -78,9 +80,13 @@ export default function AlbumUI({
           <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
             <Text style={s.backText}>← Volver</Text>
           </TouchableOpacity>
-          <View style={s.leagueBadge}>
-            <Text style={s.leagueBadgeText}>Liga Plata • Medalla 3</Text>
-          </View>
+          {ligaNombre ? (
+            <View style={s.leagueBadge}>
+              <Text style={s.leagueBadgeText}>
+                {ligaNombre}{posicionEnLiga ? ` • #${posicionEnLiga} en liga` : ""}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Album completo banner */}

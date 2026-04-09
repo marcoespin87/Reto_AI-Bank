@@ -13,6 +13,7 @@ const DEFAULT_PROGRESS: ProgressData = {
   medalla: 1,
   medallaNombre: "",
   ligaNombre: "",
+  posicionEnLiga: null,
   estrellas: 0,
   comprasParaStar: 10,
   comprasUmbral: 10,
@@ -128,8 +129,8 @@ export default function HomeScreen() {
     const ligaId = grupo.liga_id;
     const grupoNombre = grupo.nombre_grupo ?? null;
 
-    // Fetch medal data + group members + total transactions + liga name in parallel
-    const [medalResult, groupMembersResult, totalTxCount, ligaResult] = await Promise.all([
+    // Fetch medal data + group members + total transactions + liga name + ranking in parallel
+    const [medalResult, groupMembersResult, totalTxCount, ligaResult, todosGruposResult] = await Promise.all([
       supabase
         .from("liga_medals")
         .select("umbral_compras_por_estrella, nombre_medalla")
@@ -153,6 +154,11 @@ export default function HomeScreen() {
         .select("nombre")
         .eq("id", ligaId)
         .maybeSingle(),
+
+      supabase
+        .from("groups")
+        .select("id, group_members!inner(estado, users(mailes_acumulados))")
+        .eq("liga_id", ligaId),
     ]);
 
     // Fetch group objectives meta (first active objective)
@@ -178,10 +184,27 @@ export default function HomeScreen() {
     const grupoMiembrosCount = grupoMembers.length;
     const grupoMailesMeta = Number(objetivoData?.valor_objetivo ?? 0);
 
+    // Calcular posición en liga
+    let posicionEnLiga: number | null = null;
+    const todosGrupos = todosGruposResult.data ?? [];
+    if (todosGrupos.length > 0) {
+      const ranking = todosGrupos
+        .map((g: any) => {
+          const activos = g.group_members?.filter((m: any) => m.estado === "activo") || [];
+          const total = activos.reduce((sum: number, m: any) =>
+            sum + (m.users?.mailes_acumulados || 0), 0);
+          return { id: g.id, total };
+        })
+        .sort((a: any, b: any) => b.total - a.total);
+      const pos = ranking.findIndex((g: any) => g.id === grupoId) + 1;
+      posicionEnLiga = pos > 0 ? pos : null;
+    }
+
     setProgressData({
       medalla: medallaActual,
       medallaNombre,
       ligaNombre,
+      posicionEnLiga,
       estrellas: estrellasActuales,
       comprasParaStar,
       comprasUmbral: umbral,

@@ -60,6 +60,7 @@ export interface MundialUIProps {
   ligaNombre: string;
   medallaNombre: string;
   medallaActual: number;
+  posicionEnLiga: number | null;
   golesLocal: number;
   golesVisitante: number;
   prediccionEnviada: boolean;
@@ -82,6 +83,7 @@ export default function MundialUI({
   ligaNombre,
   medallaNombre,
   medallaActual,
+  posicionEnLiga,
   golesLocal,
   golesVisitante,
   prediccionEnviada,
@@ -129,12 +131,12 @@ export default function MundialUI({
             </Text>
           </View>
         </View>
-        {(ligaNombre || medallaNombre) && (
+        {ligaNombre ? (
           <View style={s.topNavRight}>
-            {ligaNombre ? <Text style={s.ligaText}>{ligaNombre}</Text> : null}
-            <Text style={s.medalText}>{medallaNombre || `Medalla ${medallaActual}`}</Text>
+            <Text style={s.ligaText}>{ligaNombre}</Text>
+            {posicionEnLiga ? <Text style={s.medalText}>#{posicionEnLiga} en liga</Text> : null}
           </View>
-        )}
+        ) : null}
       </View>
 
       <KeyboardAvoidingView
