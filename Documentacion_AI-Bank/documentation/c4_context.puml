@@ -1,0 +1,21 @@
+@startuml C4_Context_AIBank
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama de Contexto — AI-Bank [C4 Nivel 1]
+
+Person(cliente, "Cliente Bancario", "Realiza pronósticos, acumula mAiles, colecciona cromos y recibe premios personalizados.")
+
+System(aibank, "Plataforma AI-Bank", "Plataforma de gamificación bancaria orientada al Mundial FIFA 2026. Integra análisis deportivo con IA, segmentación ML de premios y mecánicas de gamificación financiera.")
+
+System_Ext(gemini, "Google Gemini 2.5 Flash", "LLM de Google. Motor de razonamiento y generación de texto para los agentes deportivos.")
+System_Ext(tavily, "Tavily Search API", "Búsqueda web con restricción de dominio. Recupera datos deportivos en tiempo real.")
+System_Ext(supabase, "Supabase", "BaaS. Provee PostgreSQL gestionado, autenticación JWT, WebSockets y almacenamiento de activos.")
+
+Rel(cliente, aibank, "Consulta partidos, realiza pronósticos, gestiona perfil bancario y premios", "HTTPS / WebSocket")
+Rel(aibank, gemini, "Envía prompts de los agentes; recibe razonamiento y texto generado", "REST API / HTTPS")
+Rel(aibank, tavily, "Ejecuta búsquedas deportivas restringidas por dominio (~6 por consulta)", "REST API / HTTPS")
+Rel(aibank, supabase, "Lee y escribe datos de usuario, pronósticos, cromos y transacciones", "SDK / REST / WebSocket")
+
+@enduml

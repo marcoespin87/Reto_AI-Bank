@@ -1,0 +1,35 @@
+@startuml C4_Containers_AIBank
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama de Contenedores — AI-Bank [C4 Nivel 2]
+
+Person(cliente, "Cliente Bancario", "Usuario de la plataforma")
+
+' ── Sistemas y contenedores externos (gestionados por terceros) ───────────────
+System_Ext(gemini, "Google Gemini 2.5 Flash", "Motor LLM externo")
+System_Ext(tavily, "Tavily Search API", "Búsqueda web deportiva")
+
+ContainerDb_Ext(db, "Base de Datos", "PostgreSQL · Supabase (managed)", "Fuente de verdad del sistema. Alojada y gestionada por Supabase. Provee Auth JWT, Row Level Security, Realtime WebSockets y Storage. El esquema y los datos pertenecen al sistema AI-Bank.")
+
+' ── Límite del sistema: solo lo que el equipo construye y despliega ───────────
+System_Boundary(aibank, "Plataforma AI-Bank") {
+    Container(app, "AI-Bank App", "React Native · Expo · TypeScript", "Aplicación cross-platform. Gestiona autenticación, pronósticos, chatbot, álbum de cromos, banca y premios.")
+    Container(agent_svc, "Agente Deportivo", "Python · FastAPI · LangGraph", "Microservicio multi-agente (Orquestador → Analista → Censor). Expone POST /chat.")
+    Container(seg_svc, "Servicio de Segmentación", "Python · FastAPI · Scikit-learn", "Clasificación ML de usuarios en categorías de premio y scoring por reglas. Expone POST /segmentar.")
+    Container(matchmaking_svc, "Motor de Matchmaking", "Python · FastAPI", "Asigna grupos óptimos mediante índice de compatibilidad (70% egresos + 30% liquidez). Expone POST /matchmaking/asignar.")
+}
+
+' ── Relaciones ────────────────────────────────────────────────────────────────
+Rel(cliente, app, "Usa la aplicación", "HTTPS / WebSocket")
+Rel(app, agent_svc, "Consulta análisis de partido", "JSON · HTTP POST /chat")
+Rel(app, seg_svc, "Solicita recomendación de premio", "JSON · HTTP POST /segmentar")
+BiRel(app, db, "Lee y escribe perfil, pronósticos, cromos y consumo", "Supabase SDK / REST / WebSocket")
+Rel(agent_svc, gemini, "Invoca LLM por cada agente del pipeline", "REST API / HTTPS")
+Rel(agent_svc, tavily, "Ejecuta 6 búsquedas deportivas paralelas por consulta", "REST API / HTTPS")
+Rel(seg_svc, db, "Lee perfil del usuario (49 features)", "SQL / REST")
+Rel(matchmaking_svc, db, "Lee egresos y saldo proyectado; escribe asignación de grupos", "SQL / REST")
+Rel(app, matchmaking_svc, "Solicita asignación automática de grupos", "JSON · HTTP POST /matchmaking/asignar")
+
+@enduml

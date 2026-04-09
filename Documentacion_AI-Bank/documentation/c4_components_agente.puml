@@ -1,0 +1,33 @@
+@startuml C4_Components_AgenteDeportivo
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama de Componentes — Agente Deportivo [C4 Nivel 3]
+
+Container_Ext(app, "AI-Bank App", "React Native / Expo", "Cliente que envía consultas deportivas")
+System_Ext(gemini, "Google Gemini 2.5 Flash", "Motor LLM")
+System_Ext(tavily, "Tavily Search API", "Búsqueda web por dominio deportivo")
+
+Container_Boundary(agent_svc, "Agente Deportivo — FastAPI / LangGraph") {
+    Component(api_router, "API Router", "FastAPI · Pydantic", "Expone POST /chat y GET /health. Valida el esquema de entrada y gestiona respuestas HTTP.")
+    Component(orchestrator, "Agente Orquestador", "LangGraph · Gemini 2.5 Flash", "Valida que la consulta sea deportiva y del Mundial. Coordina el pipeline y rechaza consultas fuera de dominio.")
+    Component(analyst, "Agente Analista", "LangGraph · Gemini 2.5 Flash · 6 Tools", "Ejecuta las 6 herramientas de búsqueda en paralelo y genera un JSON con estadísticas e internamente el ganador_proyectado.")
+    Component(censor, "Agente Censor", "LangGraph · Gemini 2.5 Flash", "Filtra el ganador_proyectado del JSON y transforma las estadísticas en un análisis Markdown balanceado y neutro.")
+    Component(memory, "Memory Store", "LangGraph MemorySaver", "Persiste el historial de conversación por thread_id durante la sesión.")
+    Component(tools, "Herramientas de Búsqueda (×6)", "Python · langchain-tavily", "get_historico_h2h · get_ranking_fifa · get_estado_forma\nget_historial_mundialista · get_metricas_goles · get_valor_plantilla\nCada tool tiene dominios permitidos explícitos.")
+}
+
+Rel(app, api_router, "POST /chat {query, thread_id}", "JSON · HTTP")
+Rel(api_router, orchestrator, "Invoca el pipeline con la query y thread_id")
+Rel(orchestrator, memory, "Lee y escribe estado de conversación por thread_id", "LangGraph StateGraph")
+Rel(orchestrator, gemini, "Interpreta la consulta y coordina el pipeline", "REST API")
+Rel(orchestrator, analyst, "Delega la búsqueda de estadísticas")
+Rel(analyst, tools, "Invoca las 6 tools en paralelo", "LangChain ToolNode")
+Rel(tools, tavily, "Búsquedas web filtradas por dominio", "REST API · HTTPS")
+Rel(analyst, gemini, "Sintetiza resultados y genera JSON estructurado", "REST API")
+Rel(orchestrator, censor, "Pasa el JSON del Analista para filtrado y formateo")
+Rel(censor, gemini, "Genera el análisis Markdown final", "REST API")
+Rel(api_router, app, "Retorna {response: Markdown, thread_id}", "JSON · HTTP 200")
+
+@enduml

@@ -1,0 +1,29 @@
+@startuml C4_Components_ServicioSegmentacion
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama de Componentes — Servicio de Segmentación [C4 Nivel 3]
+
+Container_Ext(app, "AI-Bank App", "React Native / Expo", "Cliente que envía el perfil del usuario")
+ContainerDb_Ext(db, "Base de Datos", "PostgreSQL · Supabase (managed)", "Fuente del perfil de usuario (tabla persona). Gestionada por Supabase.")
+
+Container_Boundary(seg_svc, "Servicio de Segmentación — FastAPI / Scikit-learn") {
+    Component(api_router, "API Router", "FastAPI · Pydantic", "Expone POST /segmentar, POST /segmentar/batch, GET /categorias y GET /health. Gestiona CORS.")
+    Component(input_builder, "Constructor de Features", "Python · pandas · build_input_df.py", "Transforma el perfil del usuario en un DataFrame de 49 features normalizadas, incluyendo 8 variables derivadas (engagement_score, valor_cliente_score, perfil_digital, etc.).")
+    Component(ml_classifier, "Clasificador ML", "Scikit-learn · Logistic Regression · .pkl", "Predice la categoría de premio más afín (1 de 9) y el vector de probabilidades por categoría. F1-macro: 0.79.")
+    Component(label_encoder, "Label Encoder", "Scikit-learn · LabelEncoder · .pkl", "Decodifica el índice numérico predicho al nombre de categoría textual.")
+    Component(rules_engine, "Motor de Reglas", "Python · reglas_premios.py", "Puntúa cada premio de la categoría asignada (0–100) con reglas de negocio explícitas y retorna el premio óptimo con razones y 2 alternativas. Catálogo: 40 premios en 9 categorías.")
+}
+
+Rel(app, api_router, "POST /segmentar {perfil_usuario: 49 features}", "JSON · HTTP")
+Rel_Back(db, api_router, "Lee perfil completo si recibe id_persona", "SQL / REST")
+Rel(api_router, input_builder, "Pasa el diccionario del perfil para construcción del DataFrame")
+Rel(input_builder, ml_classifier, "Pasa el DataFrame de 49 features normalizado", "pandas DataFrame")
+Rel(ml_classifier, label_encoder, "Pasa el índice predicho para decodificación")
+Rel(ml_classifier, api_router, "Retorna vector de probabilidades por categoría")
+Rel(label_encoder, rules_engine, "Pasa la categoría decodificada y el perfil del usuario")
+Rel(rules_engine, api_router, "Retorna premio óptimo, score, razones y alternativas")
+Rel(api_router, app, "Retorna {categoria, confianza_pct, premio, afinidad_pct, razones, alternativas}", "JSON · HTTP 200")
+
+@enduml

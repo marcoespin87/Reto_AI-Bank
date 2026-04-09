@@ -1,0 +1,33 @@
+@startuml C4_Components_MotorMatchmaking
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama de Componentes — Motor de Matchmaking [C4 Nivel 3]
+
+Container_Ext(app, "AI-Bank App", "React Native / Expo", "Cliente que solicita la asignación automática de grupos")
+ContainerDb_Ext(db, "Base de Datos", "PostgreSQL · Supabase (managed)", "Fuente de historial de egresos, saldo proyectado y tabla grupo")
+
+Container_Boundary(matchmaking_svc, "Motor de Matchmaking — FastAPI / Python") {
+
+    Component(api_router, "API Router", "FastAPI · Pydantic", "Expone POST /matchmaking/asignar y GET /health. Valida el esquema de entrada y gestiona respuestas HTTP.")
+
+    Component(feature_extractor, "Extractor de Features", "Python · pandas", "Lee desde la base de datos el historial de egresos (categorización de comercios y frecuencia de consumo) y el saldo proyectado de cada usuario candidato. Normaliza ambas dimensiones para el cálculo.")
+
+    Component(compatibility_calc, "Calculador de Compatibilidad", "Python", "Aplica la ponderación financiera sobre cada par de usuarios:\n  · 70% — historial de egresos (categorías de comercio + frecuencia)\n  · 30% — liquidez financiera (saldo proyectado)\nGenera la matriz de índices de compatibilidad entre todos los candidatos.")
+
+    Component(group_assigner, "Asignador de Grupos", "Python", "Recibe la matriz de compatibilidad y determina la composición óptima de grupos, maximizando el índice promedio de compatibilidad por grupo.")
+
+    Component(result_writer, "Escritor de Resultados", "Python · Supabase Client", "Persiste la asignación de grupos resultante en la tabla grupo de la base de datos.")
+}
+
+Rel(app, api_router, "POST /matchmaking/asignar\n{lista de id_persona candidatos}", "JSON · HTTP")
+Rel(api_router, feature_extractor, "Solicita extracción de features financieras para los candidatos")
+Rel(feature_extractor, db, "Lee historial de egresos (tabla consumo) y saldo proyectado (tabla perfil)", "SQL / REST")
+Rel(feature_extractor, compatibility_calc, "Pasa las features normalizadas de egresos y liquidez por usuario")
+Rel(compatibility_calc, group_assigner, "Pasa la matriz de índices de compatibilidad entre pares de usuarios")
+Rel(group_assigner, result_writer, "Pasa la asignación de grupos calculada")
+Rel(result_writer, db, "Escribe grupos asignados en tabla grupo", "SQL / REST")
+Rel(api_router, app, "Retorna {grupos: [{id_grupo, miembros[], compatibilidad_promedio}]}", "JSON · HTTP 200")
+
+@enduml
