@@ -338,6 +338,42 @@ El procesamiento de datos para la personalización de premios sigue dos fases bi
 
 Este diseño garantiza respuestas en **menos de 500 ms**, independientemente del volumen de usuarios activos en la plataforma.
 
+### 13.3 Análisis Exploratorio y Métricas del Modelo
+
+Las siguientes capturas documentan el análisis exploratorio realizado sobre el dataset sintético y la evaluación del modelo de clasificación entrenado. Constituyen la evidencia empírica que respalda las decisiones de diseño del pipeline de segmentación.
+
+---
+
+**Figura 1 — Distribución de Categorías de Premio**
+
+![Distribución de Categorías de Premio](../documentacion_base/capturas_modelo_segmentacion/1.png)
+
+Verifica el balance del dataset sintético de 30.000 perfiles entre las nueve categorías de premio. La distribución es deliberadamente equilibrada, con un rango de entre el 10.1% (hogar_lifestyle) y el 12.2% (gastronomía). Esta uniformidad evita sesgos de clase durante el entrenamiento y garantiza que el modelo no favorezca sistemáticamente ninguna categoría en detrimento de las demás.
+
+---
+
+**Figura 2 — Distribución por Liga Tier y Gasto Mensual**
+
+![Distribución por Liga Tier y Gasto Mensual](../documentacion_base/capturas_modelo_segmentacion/2.png)
+
+Muestra la distribución de perfiles sintéticos por nivel de liga (Plata: 10.658, Bronce: 8.530, Oro: 6.897, Diamante: 3.915) y valida la coherencia interna entre tier y gasto mensual. Los usuarios de Oro y Diamante concentran su actividad en rangos de gasto superiores (>1.000 USD/mes), mientras que Bronce y Plata se agrupan en tramos bajos e intermedios. Esta correlación confirma que el dataset generado reproduce fielmente la lógica de negocio del programa de ligas.
+
+---
+
+**Figura 3 — Edad por Categoría y Medalla Final Promedio**
+
+![Edad por Categoría y Medalla Final Promedio](../documentacion_base/capturas_modelo_segmentacion/3.png)
+
+El boxplot de edades revela diferencias demográficas significativas entre categorías: `premium_financiero` y `tecnologia` presentan medianas de edad más elevadas (~40–45 años), mientras que `educacion_desarrollo` y `gastronomia` concentran perfiles más jóvenes. El gráfico de medalla final promedio muestra que `viajes_internacionales`, `premium_financiero` y `tecnologia` obtienen puntuaciones de engagement ligeramente superiores (~3.5 frente a ~3.0 del resto), lo que refleja una mayor intensidad de uso de la plataforma en esos segmentos y aporta señal discriminativa adicional al modelo.
+
+---
+
+**Figura 4 — Matriz de Confusión del Modelo (Logistic Regression)**
+
+![Matriz de Confusión — Logistic Regression](../documentacion_base/capturas_modelo_segmentacion/4.png)
+
+Resultado de la evaluación del modelo sobre el conjunto de test. La diagonal concentra la mayoría de predicciones correctas, con valores entre 371 y 409 instancias por clase. Las principales confusiones se producen entre categorías semánticamente próximas: `viajes_nacionales` / `viajes_internacionales` (42 casos), `educacion_desarrollo` / `tecnologia` (50 casos) y `gastronomia` / `experiencias_entretenimiento` (33 casos). Esta distribución de errores es esperada y aceptable dado el solapamiento natural de perfiles en esos dominios. La matriz sustenta el **F1-macro de 0.79** reportado como métrica global del modelo.
+
 ---
 
 ## 14. Uso de IA en la Plataforma
@@ -346,7 +382,7 @@ La inteligencia artificial se aplica en cuatro dimensiones funcionales distintas
 
 ### 13.1 Segmentación y Clustering de Usuarios
 
-El modelo de **Logistic Regression** multiclase agrupa implícitamente a los usuarios en nueve perfiles de interés a partir de 49 variables de comportamiento. Esta segmentación no es estática: a medida que el usuario interactúa con la plataforma (más pronósticos, más consumo, más actividad social), su perfil se enriquece y la recomendación de premios puede evolucionar.
+El modelo de **XGBoost** multiclase agrupa implícitamente a los usuarios en nueve perfiles de interés a partir de variables de comportamiento. Esta segmentación no es estática: a medida que el usuario interactúa con la plataforma (más pronósticos, más consumo, más actividad social), su perfil se enriquece y la recomendación de premios puede evolucionar.
 
 Las nueve categorías de segmentación son: tecnología, viajes nacionales, viajes internacionales, gastronomía, experiencias y entretenimiento, salud y bienestar, educación y desarrollo, hogar y lifestyle, y financiero premium.
 
