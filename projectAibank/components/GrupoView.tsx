@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import BottomNav from "./BottomNav";
-import { IconSymbol } from "./ui/icon-symbol";
 
 interface GrupoViewProps {
   userId: number | null;
@@ -33,6 +32,8 @@ interface GrupoViewProps {
   nombreGrupo: string;
   codigoInput: string;
   gruposMatch: any[];
+  ligaNombre: string;
+  grupoPendiente: any | null;
   onRefresh: () => void;
   setModalCrear: (v: boolean) => void;
   setModalUnirse: (v: boolean) => void;
@@ -50,7 +51,7 @@ interface GrupoViewProps {
   onAprobarMiembro: (id: number) => void;
   onRechazarMiembro: (id: number) => void;
   onRenombrarGrupo: () => void;
-  ligaNombre: string;
+  onCancelarSolicitud: () => void;
 }
 
 export default function GrupoView({
@@ -71,6 +72,8 @@ export default function GrupoView({
   nombreGrupo,
   codigoInput,
   gruposMatch,
+  ligaNombre,
+  grupoPendiente,
   onRefresh,
   setModalCrear,
   setModalUnirse,
@@ -88,7 +91,7 @@ export default function GrupoView({
   onAprobarMiembro,
   onRechazarMiembro,
   onRenombrarGrupo,
-  ligaNombre,
+  onCancelarSolicitud,
 }: GrupoViewProps) {
   const { colors } = useTheme();
 
@@ -106,7 +109,6 @@ export default function GrupoView({
     return p?.progreso_actual || 0;
   }
 
-  // Calcular estrellas dinámicamente según mAiles
   function calcularEstrellas(mailes: number): number {
     if (mailes >= 5000) return 5;
     if (mailes >= 3000) return 4;
@@ -115,7 +117,6 @@ export default function GrupoView({
     return 1;
   }
 
-  // Renderizar estrellas como componentes
   function renderStars(count: number) {
     return Array.from({ length: count }, (_, i) => (
       <Ionicons key={i} name="star" size={12} color={colors.gold} />
@@ -126,7 +127,6 @@ export default function GrupoView({
     ));
   }
 
-  // Limitar pendientes a 2
   const pendientesVisibles = pendientes.slice(0, 2);
   const pendientesOcultas = Math.max(0, pendientes.length - 2);
 
@@ -148,111 +148,148 @@ export default function GrupoView({
       >
         {/* PANTALLA SIN GRUPO */}
         {!grupo ? (
-          <View style={s.noGroupContainer}>
-            {/* Hero */}
-            <View style={s.noGroupHero}>
+          grupoPendiente ? (
+            /* ESTADO DE ESPERA: solicitud enviada */
+            <View style={s.pendienteContainer}>
               <View style={s.noGroupIconWrap}>
                 <Ionicons
-                  name="people-outline"
+                  name="time-outline"
                   size={40}
                   color={colors.primary}
                 />
               </View>
-              <Text style={s.noGroupTitle}>Sin grupo activo</Text>
+              <Text style={s.noGroupTitle}>Solicitud enviada</Text>
               <Text style={s.noGroupSub}>
-                Únete a un equipo, compite en liga y acumula mAiles juntos
+                Esperando aprobación de los miembros de
               </Text>
-            </View>
-
-            {/* Acciones */}
-            <View style={s.noGroupActions}>
+              <Text style={s.pendienteNombreGrupo}>
+                {grupoPendiente.nombre}
+              </Text>
+              <Text style={s.pendienteHint}>
+                Los miembros del grupo deben votar para aceptarte. Podrás ver el
+                grupo una vez que todos aprueben.
+              </Text>
               <TouchableOpacity
-                style={s.noGroupBtnPrimary}
-                onPress={() => setModalCrear(true)}
-                activeOpacity={0.85}
+                style={s.btnCancelarSolicitud}
+                onPress={onCancelarSolicitud}
+                disabled={loading}
               >
-                <Ionicons
-                  name="add-circle-outline"
-                  size={26}
-                  color={colors.textOnGold}
-                />
-                <View style={s.noGroupBtnTextCol}>
-                  <Text style={s.noGroupBtnPrimaryText}>Crear grupo</Text>
-                  <Text style={s.noGroupBtnPrimarySub}>
-                    Sé el capitán de tu equipo
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={colors.textOnGold}
-                  style={{ opacity: 0.6 }}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={s.noGroupBtnSecondary}
-                onPress={() => setModalUnirse(true)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="key-outline" size={24} color={colors.primary} />
-                <View style={s.noGroupBtnTextCol}>
-                  <Text style={s.noGroupBtnSecondaryText}>
-                    Unirse con código
-                  </Text>
-                  <Text style={s.noGroupBtnSecondarySub}>
-                    Ingresa el código de invitación
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={colors.textSecondary}
-                  style={{ opacity: 0.5 }}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={s.noGroupBtnSecondary}
-                onPress={() => setModalMatchmaking(true)}
-                activeOpacity={0.85}
-              >
-                <Ionicons
-                  name="radio-button-on-outline"
-                  size={24}
-                  color={colors.primary}
-                />
-                <View style={s.noGroupBtnTextCol}>
-                  <Text style={s.noGroupBtnSecondaryText}>Matchmaking</Text>
-                  <Text style={s.noGroupBtnSecondarySub}>
-                    Busca grupos con tu nivel
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={colors.textSecondary}
-                  style={{ opacity: 0.5 }}
-                />
+                <Text style={s.btnCancelarSolicitudText}>
+                  Cancelar solicitud
+                </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          ) : (
+            /* ESTADO NORMAL: sin grupo */
+            <View style={s.noGroupContainer}>
+              <View style={s.noGroupHero}>
+                <View style={s.noGroupIconWrap}>
+                  <Ionicons
+                    name="people-outline"
+                    size={40}
+                    color={colors.primary}
+                  />
+                </View>
+                <Text style={s.noGroupTitle}>Sin grupo activo</Text>
+                <Text style={s.noGroupSub}>
+                  Únete a un equipo, compite en liga y acumula mAiles juntos
+                </Text>
+              </View>
+
+              <View style={s.noGroupActions}>
+                <TouchableOpacity
+                  style={s.noGroupBtnPrimary}
+                  onPress={() => setModalCrear(true)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={26}
+                    color={colors.textOnGold}
+                  />
+                  <View style={s.noGroupBtnTextCol}>
+                    <Text style={s.noGroupBtnPrimaryText}>Crear grupo</Text>
+                    <Text style={s.noGroupBtnPrimarySub}>
+                      Sé el capitán de tu equipo
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={colors.textOnGold}
+                    style={{ opacity: 0.6 }}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={s.noGroupBtnSecondary}
+                  onPress={() => setModalUnirse(true)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name="key-outline"
+                    size={24}
+                    color={colors.primary}
+                  />
+                  <View style={s.noGroupBtnTextCol}>
+                    <Text style={s.noGroupBtnSecondaryText}>
+                      Unirse con código
+                    </Text>
+                    <Text style={s.noGroupBtnSecondarySub}>
+                      Ingresa el código de invitación
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={colors.textSecondary}
+                    style={{ opacity: 0.5 }}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={s.noGroupBtnSecondary}
+                  onPress={() => setModalMatchmaking(true)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name="radio-button-on-outline"
+                    size={24}
+                    color={colors.primary}
+                  />
+                  <View style={s.noGroupBtnTextCol}>
+                    <Text style={s.noGroupBtnSecondaryText}>Matchmaking</Text>
+                    <Text style={s.noGroupBtnSecondarySub}>
+                      Busca grupos con tu perfil de gastos
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={colors.textSecondary}
+                    style={{ opacity: 0.5 }}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )
         ) : (
           <View key="grupo-content-wrapper">
-            {/* Header con Badge de Solicitudes Pendientes */}
+            {/* Header */}
             <View style={s.header}>
               <View style={{ flex: 1 }}>
                 <Text style={s.groupName}>{grupo.nombre}</Text>
                 <View style={s.groupBadgeRow}>
                   {ligaNombre ? (
                     <View style={s.groupBadge}>
-                      <Text style={s.groupBadgeText}>{ligaNombre.toUpperCase()}</Text>
+                      <Text style={s.groupBadgeText}>
+                        {ligaNombre.toUpperCase()}
+                      </Text>
                     </View>
                   ) : null}
                 </View>
               </View>
               <View style={s.headerBtns}>
-                {/* Badge de notificación */}
                 {pendientes.length > 0 && (
                   <View style={s.notificationBadge}>
                     <Text style={s.notificationBadgeText}>
@@ -263,21 +300,24 @@ export default function GrupoView({
                 <TouchableOpacity
                   onPress={() => setModalRenombrar(true)}
                   style={s.iconBtn}
-                  accessibilityLabel="Renombrar grupo"
                 >
-                  <IconSymbol name="edit" size={22} color={colors.primary} />
+                  <Ionicons
+                    name="pencil-outline"
+                    size={22}
+                    color={colors.primary}
+                  />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={onCompartirCodigo}
-                  style={s.iconBtn}
-                  accessibilityLabel="Compartir código"
-                >
-                  <IconSymbol name="share" size={22} color={colors.primary} />
+                <TouchableOpacity onPress={onCompartirCodigo} style={s.iconBtn}>
+                  <Ionicons
+                    name="share-social-outline"
+                    size={22}
+                    color={colors.primary}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Codigo invitacion */}
+            {/* Código invitación */}
             <TouchableOpacity style={s.codigoCard} onPress={onCompartirCodigo}>
               <Text style={s.codigoLabel}>CÓDIGO DE INVITACIÓN</Text>
               <Text style={s.codigoCodigo}>{grupo.codigo_invitacion}</Text>
@@ -302,7 +342,7 @@ export default function GrupoView({
               </View>
             </View>
 
-            {/* Solicitudes pendientes - Máximo 2 visibles */}
+            {/* Solicitudes pendientes */}
             {pendientes.length > 0 ? (
               <View style={s.sectionCard}>
                 <View style={s.sectionHeaderWithBadge}>
@@ -616,7 +656,7 @@ export default function GrupoView({
         </View>
       </Modal>
 
-      {/* Modales - SIEMPRE EN ÁRBOL (nunca se eliminan) */}
+      {/* Modal Crear */}
       <Modal visible={modalCrear} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
@@ -650,6 +690,7 @@ export default function GrupoView({
         </View>
       </Modal>
 
+      {/* Modal Unirse */}
       <Modal visible={modalUnirse} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
@@ -684,6 +725,7 @@ export default function GrupoView({
         </View>
       </Modal>
 
+      {/* Modal Renombrar */}
       <Modal visible={modalRenombrar} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
@@ -717,12 +759,14 @@ export default function GrupoView({
         </View>
       </Modal>
 
+      {/* Modal Matchmaking */}
       <Modal visible={modalMatchmaking} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
             <Text style={s.modalTitle}>Matchmaking</Text>
             <Text style={s.matchmakingDesc}>
-              Buscaremos un grupo con perfiles de gasto similares al tuyo
+              Analizaremos tus categorías de gasto y tus mAiles para encontrar
+              el grupo más compatible contigo
               {ligaNombre ? ` en ${ligaNombre}` : ""}.
             </Text>
             <TouchableOpacity
@@ -746,15 +790,32 @@ export default function GrupoView({
         </View>
       </Modal>
 
+      {/* Modal Resultado Matchmaking */}
       <Modal visible={modalResultadoMatch} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>Grupos compatibles</Text>
-            <Text style={s.matchmakingDesc}>
-              Encontramos {gruposMatch.length} grupo
-              {gruposMatch.length > 1 ? "s" : ""} con mAiles similares a los
-              tuyos (±500).
-            </Text>
+            <Text style={s.modalTitle}>🎯 Grupos compatibles</Text>
+
+            {gruposMatch.length === 0 ? (
+              /* Sin resultados */
+              <View style={s.sinResultadosContainer}>
+                <Text style={s.sinResultadosIcon}>🔍</Text>
+                <Text style={s.sinResultadosTitulo}>
+                  Sin grupos disponibles
+                </Text>
+                <Text style={s.sinResultadosDesc}>
+                  No encontramos grupos activos para unirte en este momento.
+                  Puedes crear uno nuevo e invitar a tus amigos.
+                </Text>
+              </View>
+            ) : (
+              <Text style={s.matchmakingDesc}>
+                Encontramos {gruposMatch.length} grupo
+                {gruposMatch.length > 1 ? "s" : ""} ordenados por afinidad de
+                mAiles y perfil de gastos.
+              </Text>
+            )}
+
             <ScrollView
               style={{ maxHeight: 300 }}
               showsVerticalScrollIndicator={false}
@@ -763,13 +824,16 @@ export default function GrupoView({
                 const miembrosActivos =
                   g.group_members?.filter((m: any) => m.estado === "activo") ||
                   [];
-                const promedioMailes = Math.round(
-                  miembrosActivos.reduce(
-                    (sum: number, m: any) =>
-                      sum + (m.users?.mailes_acumulados || 0),
-                    0,
-                  ) / (miembrosActivos.length || 1),
-                );
+                const afinidad = Math.round((g._score || 0) * 100);
+                const promedioMailes =
+                  g._promedioMailes ??
+                  Math.round(
+                    miembrosActivos.reduce(
+                      (sum: number, m: any) =>
+                        sum + (m.users?.mailes_acumulados || 0),
+                      0,
+                    ) / (miembrosActivos.length || 1),
+                  );
                 return (
                   <View key={g.id} style={s.grupoMatchItem}>
                     <View style={s.grupoMatchInfo}>
@@ -794,7 +858,7 @@ export default function GrupoView({
                             color={colors.textSecondary}
                           />
                           <Text style={s.grupoMatchSub}>
-                            {miembrosActivos.length}/{g.max_miembros} miembros
+                            {miembrosActivos.length}/{g.max_miembros}
                           </Text>
                         </View>
                         <View
@@ -810,6 +874,9 @@ export default function GrupoView({
                           </Text>
                         </View>
                       </View>
+                      <Text style={s.grupoMatchAfinidad}>
+                        🎯 {afinidad}% afinidad
+                      </Text>
                     </View>
                     <TouchableOpacity
                       style={s.btnUnirse}
@@ -822,6 +889,7 @@ export default function GrupoView({
                 );
               })}
             </ScrollView>
+
             <TouchableOpacity
               style={s.btnCancel}
               onPress={() => setModalResultadoMatch(false)}
@@ -832,7 +900,6 @@ export default function GrupoView({
         </View>
       </Modal>
 
-      {/* BottomNav - SIEMPRE EN ÁRBOL */}
       <BottomNav active="grupo" />
     </SafeAreaView>
   );
@@ -845,8 +912,9 @@ function getStyles(
 ) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.background },
-    scroll: { paddingHorizontal: 20 },
+    scroll: { paddingHorizontal: 20, flexGrow: 1 },
 
+    // Sin grupo — estado normal
     noGroupContainer: {
       flex: 1,
       paddingTop: 40,
@@ -882,9 +950,7 @@ function getStyles(
       textAlign: "center",
       lineHeight: 20,
     },
-    noGroupActions: {
-      gap: 10,
-    },
+    noGroupActions: { gap: 10 },
     noGroupBtnPrimary: {
       backgroundColor: colors.gold,
       borderRadius: 18,
@@ -935,6 +1001,46 @@ function getStyles(
       marginTop: 1,
     },
 
+    // Sin grupo — estado pendiente
+    pendienteContainer: {
+      flex: 1,
+      minHeight: 500,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 24,
+      gap: 8,
+    },
+    pendienteNombreGrupo: {
+      color: colors.textPrimary,
+      fontSize: 20,
+      fontWeight: "800",
+      marginTop: 4,
+      marginBottom: 16,
+      textAlign: "center",
+    },
+    pendienteHint: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      textAlign: "center",
+      lineHeight: 20,
+      marginBottom: 24,
+      paddingHorizontal: 8,
+    },
+    btnCancelarSolicitud: {
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderWidth: 1,
+      borderColor: "#e05c5c",
+      alignItems: "center",
+    },
+    btnCancelarSolicitudText: {
+      color: "#e05c5c",
+      fontWeight: "700",
+      fontSize: 14,
+    },
+
+    // Header grupo activo
     header: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -967,7 +1073,6 @@ function getStyles(
       fontWeight: "700",
       letterSpacing: 1,
     },
-    groupRank: { color: colors.primary, fontSize: 11, fontWeight: "700" },
     headerBtns: { flexDirection: "row", gap: 8 },
     iconBtn: {
       backgroundColor: colors.cardBackground,
@@ -976,6 +1081,16 @@ function getStyles(
       borderWidth: 0.5,
       borderColor: colors.borderStrong,
     },
+    notificationBadge: {
+      backgroundColor: colors.error,
+      borderRadius: 12,
+      width: 24,
+      height: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 4,
+    },
+    notificationBadgeText: { color: "white", fontSize: 12, fontWeight: "800" },
 
     codigoCard: {
       backgroundColor: colors.cardBackground,
@@ -1035,6 +1150,12 @@ function getStyles(
       alignItems: "center",
       marginBottom: 12,
     },
+    sectionHeaderWithBadge: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
     sectionTitle: {
       color: colors.textPrimary,
       fontSize: 15,
@@ -1047,8 +1168,36 @@ function getStyles(
       fontWeight: "600",
       letterSpacing: 1,
     },
+    countBadge: {
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    countBadgeText: { color: "white", fontSize: 11, fontWeight: "700" },
+    verMasButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      marginTop: 8,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryDim,
+    },
+    verMasText: { color: colors.primary, fontSize: 13, fontWeight: "700" },
 
     pendienteItem: { marginBottom: 12, gap: 10 },
+    pendienteItemModal: {
+      marginBottom: 16,
+      paddingBottom: 16,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.borderMedium,
+      gap: 10,
+    },
     pendienteInfo: { flexDirection: "row", alignItems: "center", gap: 10 },
     voteRow: { flexDirection: "row", gap: 8 },
     btnAprobar: {
@@ -1059,12 +1208,11 @@ function getStyles(
       borderRadius: 10,
       paddingVertical: 8,
       alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: 4,
     },
-    btnAprobarText: {
-      color: colors.primary,
-      fontSize: 12,
-      fontWeight: "700",
-    },
+    btnAprobarText: { color: colors.primary, fontSize: 12, fontWeight: "700" },
     btnRechazar: {
       flex: 1,
       backgroundColor: colors.errorDim,
@@ -1073,6 +1221,9 @@ function getStyles(
       borderRadius: 10,
       paddingVertical: 8,
       alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: 4,
     },
     btnRechazarText: { color: colors.error, fontSize: 12, fontWeight: "700" },
 
@@ -1105,18 +1256,18 @@ function getStyles(
       alignItems: "center",
       justifyContent: "center",
     },
-    miniAvatarText: {
-      color: colors.primary,
-      fontSize: 14,
-      fontWeight: "700",
-    },
-    memberName: {
-      color: colors.textPrimary,
-      fontSize: 13,
-      fontWeight: "700",
-    },
+    miniAvatarText: { color: colors.primary, fontSize: 14, fontWeight: "700" },
+    memberName: { color: colors.textPrimary, fontSize: 13, fontWeight: "700" },
+    memberNameMe: { color: colors.textPrimary, fontWeight: "800" },
     memberSub: { color: colors.textPrimary, fontSize: 11, marginTop: 1 },
     memberMailes: { color: colors.gold, fontSize: 13, fontWeight: "700" },
+    tuBadge: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    tuBadgeText: { color: "white", fontSize: 9, fontWeight: "700" },
 
     inviteSlot: {
       flexDirection: "row",
@@ -1150,11 +1301,7 @@ function getStyles(
       fontWeight: "700",
       flex: 1,
     },
-    objetivoDesc: {
-      color: colors.textPrimary,
-      fontSize: 12,
-      marginBottom: 8,
-    },
+    objetivoDesc: { color: colors.textPrimary, fontSize: 12, marginBottom: 8 },
     mailesReward: {
       backgroundColor: colors.goldDim,
       paddingHorizontal: 8,
@@ -1181,6 +1328,7 @@ function getStyles(
       borderRadius: 3,
     },
 
+    // Modales
     modalOverlay: {
       flex: 1,
       backgroundColor: colors.overlay,
@@ -1200,6 +1348,16 @@ function getStyles(
       fontWeight: "800",
       marginBottom: 20,
     },
+    modalHeaderWithClose: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.borderMedium,
+    },
+    closeBtn: { padding: 4 },
     inputLabel: {
       color: colors.primary,
       fontSize: 10,
@@ -1225,7 +1383,6 @@ function getStyles(
       marginBottom: 20,
       lineHeight: 20,
     },
-
     btnPrimary: {
       backgroundColor: colors.gold,
       borderRadius: 14,
@@ -1238,21 +1395,6 @@ function getStyles(
       fontWeight: "800",
       fontSize: 16,
     },
-    btnSecondary: {
-      backgroundColor: colors.cardBackground,
-      borderRadius: 14,
-      paddingVertical: 14,
-      alignItems: "center",
-      marginBottom: 10,
-      width: "100%",
-      borderWidth: 0.5,
-      borderColor: colors.borderStrong,
-    },
-    btnSecondaryText: {
-      color: colors.textPrimary,
-      fontWeight: "700",
-      fontSize: 15,
-    },
     btnCancel: { alignItems: "center", paddingVertical: 10 },
     btnCancelText: {
       color: colors.textSecondary,
@@ -1260,6 +1402,7 @@ function getStyles(
       fontWeight: "600",
     },
 
+    // Matchmaking resultados
     grupoMatchItem: {
       flexDirection: "row",
       alignItems: "center",
@@ -1274,10 +1417,12 @@ function getStyles(
       fontSize: 14,
       fontWeight: "700",
     },
-    grupoMatchSub: {
-      color: colors.textSecondary,
+    grupoMatchSub: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+    grupoMatchAfinidad: {
+      color: colors.primary,
       fontSize: 11,
-      marginTop: 2,
+      fontWeight: "700",
+      marginTop: 4,
     },
     btnUnirse: {
       backgroundColor: colors.primary,
@@ -1287,89 +1432,25 @@ function getStyles(
     },
     btnUnirseText: { color: "#002b73", fontWeight: "800", fontSize: 12 },
 
-    // Nuevos estilos para optimizaciones
-    notificationBadge: {
-      backgroundColor: colors.error,
-      borderRadius: 12,
-      width: 24,
-      height: 24,
+    // Sin resultados matchmaking
+    sinResultadosContainer: {
       alignItems: "center",
-      justifyContent: "center",
-      marginRight: 4,
-    },
-    notificationBadgeText: {
-      color: "white",
-      fontSize: 12,
-      fontWeight: "800",
-    },
-    memberNameMe: {
-      color: colors.textPrimary,
-      fontWeight: "800",
-    },
-    tuBadge: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 6,
-    },
-    tuBadgeText: {
-      color: "white",
-      fontSize: 9,
-      fontWeight: "700",
-    },
-    sectionHeaderWithBadge: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 12,
-    },
-    countBadge: {
-      backgroundColor: colors.primary,
-      borderRadius: 10,
+      paddingVertical: 24,
       paddingHorizontal: 8,
-      paddingVertical: 4,
     },
-    countBadgeText: {
-      color: "white",
-      fontSize: 11,
+    sinResultadosIcon: { fontSize: 40, marginBottom: 12 },
+    sinResultadosTitulo: {
+      color: colors.textPrimary,
+      fontSize: 16,
       fontWeight: "700",
+      marginBottom: 8,
+      textAlign: "center",
     },
-    verMasButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      marginTop: 8,
-      borderRadius: 12,
-      borderWidth: 1.5,
-      borderColor: colors.primary,
-      backgroundColor: colors.primaryDim,
-    },
-    verMasText: {
-      color: colors.primary,
+    sinResultadosDesc: {
+      color: colors.textSecondary,
       fontSize: 13,
-      fontWeight: "700",
-    },
-    pendienteItemModal: {
-      marginBottom: 16,
-      paddingBottom: 16,
-      borderBottomWidth: 0.5,
-      borderBottomColor: colors.borderMedium,
-      gap: 10,
-    },
-    modalHeaderWithClose: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 16,
-      paddingBottom: 12,
-      borderBottomWidth: 0.5,
-      borderBottomColor: colors.borderMedium,
-    },
-    closeBtn: {
-      padding: 4,
+      textAlign: "center",
+      lineHeight: 20,
     },
   });
 }

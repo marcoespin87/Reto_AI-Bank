@@ -57,33 +57,6 @@ const categoryIcon: Record<string, string> = {
   default: "💳",
 };
 
-const defaultTransactions = [
-  {
-    id: "default-1",
-    name: "Supermercado Premium",
-    time: "Hace 2 horas",
-    amount: "$45.00",
-    mailes: "+18 mAiles",
-    icon: "🛒",
-  },
-  {
-    id: "default-2",
-    name: "Star Stadium Coffee",
-    time: "Ayer, 09:15 AM",
-    amount: "$8.50",
-    mailes: "+2 mAiles",
-    icon: "☕",
-  },
-  {
-    id: "default-3",
-    name: "Entradas Final Mundial",
-    time: "12 Jun",
-    amount: "$1,200.00",
-    mailes: "+500 mAiles",
-    icon: "⚽",
-  },
-];
-
 export default function HomeUI({
   userName,
   mailes,
@@ -138,7 +111,8 @@ export default function HomeUI({
               <Text style={s.leagueBadgeText}>
                 {[
                   progressData.ligaNombre,
-                  progressData.medallaNombre || `Medalla ${progressData.medalla}`,
+                  progressData.medallaNombre ||
+                    `Medalla ${progressData.medalla}`,
                 ]
                   .filter(Boolean)
                   .join(" • ")}
@@ -203,58 +177,69 @@ export default function HomeUI({
           showsHorizontalScrollIndicator={false}
           style={{ marginBottom: 16 }}
         >
-          {misStickersRecientes.length === 0 ? (
-            <View style={s.emptyCromos}>
-              <Text style={s.emptyCromosText}>
-                🃏 Gasta ${DOLARES_POR_CROMO} para obtener tu primer cromo
-              </Text>
-            </View>
-          ) : (
-            misStickersRecientes.slice(0, 3).map((us) => {
-              const rareza = us.stickers?.rareza;
-              const borderColor =
-                rareza === "epico"
-                  ? colors.rarityEpicBorder
-                  : rareza === "raro"
-                    ? colors.rarityRareBorder
-                    : colors.rarityCommonBorder;
-              const badgeBg =
-                rareza === "epico"
-                  ? colors.rarityEpicBg
-                  : rareza === "raro"
-                    ? colors.rarityRareBg
-                    : colors.rarityCommonBg;
-              const badgeText =
-                rareza === "epico"
-                  ? "ÉPICO"
-                  : rareza === "raro"
-                    ? "RARO"
-                    : "COMÚN";
-              const badgeColor =
-                rareza === "epico"
-                  ? colors.rarityEpicText
-                  : rareza === "raro"
-                    ? colors.rarityRareText
-                    : colors.rarityCommonText;
-              return (
-                <TouchableOpacity
-                  key={`cromo-${us.id ?? us.stickers?.id}`}
-                  style={[s.cromoCard, { borderColor }]}
-                  onPress={() => router.replace("/(tabs)/album")}
+          {misStickersRecientes.length > 0
+            ? misStickersRecientes.slice(0, 3).map((us) => {
+                const rareza = us.stickers?.rareza;
+                const borderColor =
+                  rareza === "epico"
+                    ? colors.rarityEpicBorder
+                    : rareza === "raro"
+                      ? colors.rarityRareBorder
+                      : colors.rarityCommonBorder;
+                const badgeBg =
+                  rareza === "epico"
+                    ? colors.rarityEpicBg
+                    : rareza === "raro"
+                      ? colors.rarityRareBg
+                      : colors.rarityCommonBg;
+                const badgeText =
+                  rareza === "epico"
+                    ? "ÉPICO"
+                    : rareza === "raro"
+                      ? "RARO"
+                      : "COMÚN";
+                const badgeColor =
+                  rareza === "epico"
+                    ? colors.rarityEpicText
+                    : rareza === "raro"
+                      ? colors.rarityRareText
+                      : colors.rarityCommonText;
+                return (
+                  <TouchableOpacity
+                    key={`cromo-${us.id ?? us.stickers?.id}`}
+                    style={[s.cromoCard, { borderColor }]}
+                    onPress={() => router.replace("/(tabs)/album")}
+                  >
+                    <Image
+                      source={{ uri: us.stickers?.imagen_url }}
+                      style={s.cromoImage}
+                    />
+                    <View style={[s.cromoBadge, { backgroundColor: badgeBg }]}>
+                      <Text style={[s.cromoBadgeText, { color: badgeColor }]}>
+                        {badgeText}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            : [0, 1, 2].map((i) => (
+                <View
+                  key={`cromo-placeholder-${i}`}
+                  style={[
+                    s.cromoCard,
+                    {
+                      borderColor: colors.borderMedium,
+                      backgroundColor: colors.backgroundSecondary,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    },
+                  ]}
                 >
-                  <Image
-                    source={{ uri: us.stickers?.imagen_url }}
-                    style={s.cromoImage}
-                  />
-                  <View style={[s.cromoBadge, { backgroundColor: badgeBg }]}>
-                    <Text style={[s.cromoBadgeText, { color: badgeColor }]}>
-                      {badgeText}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
+                  <Text style={{ color: colors.textMuted, fontSize: 32 }}>
+                    🃏
+                  </Text>
+                </View>
+              ))}
         </ScrollView>
 
         {/* Recent Transactions */}
@@ -265,9 +250,9 @@ export default function HomeUI({
           </TouchableOpacity>
         </View>
 
-        <View>
-          {transactions.length > 0 ? (
-            transactions.map((tx) => (
+        {transactions.length > 0 ? (
+          <View>
+            {transactions.map((tx) => (
               <View key={`tx-${tx.id}`} style={s.txItem}>
                 <View style={s.txIconWrap}>
                   <Text style={s.txIcon}>
@@ -290,27 +275,19 @@ export default function HomeUI({
                   )}
                 </View>
               </View>
-            ))
-          ) : (
-            <View key="default-transactions-wrapper">
-              {defaultTransactions.map((item) => (
-                <View key={`tx-default-${item.id}`} style={s.txItem}>
-                  <View style={s.txIconWrap}>
-                    <Text style={s.txIcon}>{item.icon}</Text>
-                  </View>
-                  <View style={s.txInfo}>
-                    <Text style={s.txName}>{item.name}</Text>
-                    <Text style={s.txDate}>{item.time}</Text>
-                  </View>
-                  <View style={s.txRight}>
-                    <Text style={s.txAmount}>{item.amount}</Text>
-                    <Text style={s.txMailes}>{item.mailes}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <Text
+            style={{
+              color: colors.textMuted,
+              textAlign: "center",
+              marginTop: 8,
+            }}
+          >
+            No tienes movimientos recientes
+          </Text>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,11 +10,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import Markdown from 'react-native-markdown-display';
+} from "react-native";
+import Markdown from "react-native-markdown-display";
 
 interface Message {
-  role: 'bot' | 'user';
+  role: "bot" | "user";
   text: string;
 }
 
@@ -26,11 +26,11 @@ interface Props {
 export default function ChatbotModal({ visible, onClose }: Props) {
   const [messages, setMessages] = useState<Message[]>([
     {
-      role: 'bot',
-      text: '¡Hola! Soy tu **AI Coach** ⚽. Pregúntame sobre el partido Ecuador vs Costa de Marfil y te ayudo con tu predicción.',
+      role: "bot",
+      text: "¡Hola! Soy tu **AI Coach** ⚽. Pregúntame sobre el partido Ecuador vs Costa de Marfil y te ayudo con tu predicción.",
     },
   ]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -38,23 +38,29 @@ export default function ChatbotModal({ visible, onClose }: Props) {
   async function sendMessage() {
     if (!input.trim() || loading) return;
     const userMsg = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8001/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userMsg, thread_id: threadId }),
-      });
+      const res = await fetch(
+        "https://ai-bank-backend-o83m.onrender.com/agent/chat",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: userMsg, thread_id: threadId }),
+        },
+      );
       if (!res.ok) throw new Error(`Error ${res.status}`);
       const data = await res.json();
       if (data.thread_id && !threadId) setThreadId(data.thread_id);
-      setMessages(prev => [...prev, { role: 'bot', text: data.response }]);
+      setMessages((prev) => [...prev, { role: "bot", text: data.response }]);
     } catch {
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
-        { role: 'bot', text: '⚠️ No pude conectarme al AI Coach. Verifica que el servidor esté corriendo.' },
+        {
+          role: "bot",
+          text: "⚠️ No pude conectarme al AI Coach. Verifica que el servidor esté corriendo.",
+        },
       ]);
     } finally {
       setLoading(false);
@@ -63,11 +69,16 @@ export default function ChatbotModal({ visible, onClose }: Props) {
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
       <View style={s.overlay}>
         <KeyboardAvoidingView
           style={s.sheet}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={0}
         >
           {/* Header */}
@@ -97,17 +108,21 @@ export default function ChatbotModal({ visible, onClose }: Props) {
             style={s.messages}
             contentContainerStyle={s.messagesContent}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+            onContentSizeChange={() =>
+              scrollRef.current?.scrollToEnd({ animated: true })
+            }
           >
             {messages.map((msg, i) => (
               <View
                 key={i}
                 style={[
                   s.bubbleWrapper,
-                  msg.role === 'user' ? s.bubbleWrapperUser : s.bubbleWrapperBot,
+                  msg.role === "user"
+                    ? s.bubbleWrapperUser
+                    : s.bubbleWrapperBot,
                 ]}
               >
-                {msg.role === 'bot' ? (
+                {msg.role === "bot" ? (
                   <View style={s.botBubble}>
                     <Markdown style={markdownStyles}>{msg.text}</Markdown>
                   </View>
@@ -145,10 +160,11 @@ export default function ChatbotModal({ visible, onClose }: Props) {
               onPress={sendMessage}
               disabled={loading}
             >
-              {loading
-                ? <ActivityIndicator size="small" color="#0d0f1a" />
-                : <Text style={s.sendIcon}>↑</Text>
-              }
+              {loading ? (
+                <ActivityIndicator size="small" color="#0d0f1a" />
+              ) : (
+                <Text style={s.sendIcon}>↑</Text>
+              )}
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -160,75 +176,75 @@ export default function ChatbotModal({ visible, onClose }: Props) {
 const s = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: '#0d1b2e',
+    backgroundColor: "#0d1b2e",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: '88%',
+    maxHeight: "88%",
     borderTopWidth: 0.5,
-    borderColor: '#1f2a3d',
+    borderColor: "#1f2a3d",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 14,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   headerIcon: { fontSize: 28 },
   headerTitle: {
-    color: '#d7e3fc',
+    color: "#d7e3fc",
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   headerSub: {
-    color: '#8c90a1',
+    color: "#8c90a1",
     fontSize: 11,
     marginTop: 1,
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   betaBadge: {
-    backgroundColor: 'rgba(178,197,255,0.1)',
+    backgroundColor: "rgba(178,197,255,0.1)",
     borderWidth: 1,
-    borderColor: 'rgba(178,197,255,0.25)',
+    borderColor: "rgba(178,197,255,0.25)",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
   betaText: {
-    color: '#b2c5ff',
+    color: "#b2c5ff",
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   closeBtn: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#1f2a3d',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#1f2a3d",
+    alignItems: "center",
+    justifyContent: "center",
   },
   closeBtnText: {
-    color: '#8c90a1',
+    color: "#8c90a1",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   divider: {
     height: 0.5,
-    backgroundColor: '#1f2a3d',
+    backgroundColor: "#1f2a3d",
     marginHorizontal: 20,
   },
   messages: {
@@ -240,112 +256,112 @@ const s = StyleSheet.create({
     gap: 8,
   },
   bubbleWrapper: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   bubbleWrapperBot: {
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
   },
   bubbleWrapperUser: {
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   botBubble: {
-    backgroundColor: '#1a2740',
+    backgroundColor: "#1a2740",
     borderRadius: 16,
     borderBottomLeftRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    maxWidth: '85%',
+    maxWidth: "85%",
   },
   loadingBubble: {
     paddingVertical: 12,
     paddingHorizontal: 20,
   },
   userBubble: {
-    backgroundColor: '#b2c5ff',
+    backgroundColor: "#b2c5ff",
     borderRadius: 16,
     borderBottomRightRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    maxWidth: '85%',
+    maxWidth: "85%",
   },
   userText: {
-    color: '#002b73',
+    color: "#002b73",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     lineHeight: 20,
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     gap: 10,
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+    paddingBottom: Platform.OS === "ios" ? 28 : 16,
     borderTopWidth: 0.5,
-    borderTopColor: '#1f2a3d',
+    borderTopColor: "#1f2a3d",
   },
   input: {
     flex: 1,
-    backgroundColor: '#0a1525',
+    backgroundColor: "#0a1525",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    color: '#d7e3fc',
+    color: "#d7e3fc",
     fontSize: 14,
     borderWidth: 0.5,
-    borderColor: '#1f2a3d',
+    borderColor: "#1f2a3d",
     maxHeight: 100,
   },
   sendBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#b2c5ff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#b2c5ff",
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendBtnDisabled: {
     opacity: 0.5,
   },
   sendIcon: {
-    color: '#002b73',
+    color: "#002b73",
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });
 
 const markdownStyles = StyleSheet.create({
   body: {
-    color: '#d7e3fc',
+    color: "#d7e3fc",
     fontSize: 14,
     lineHeight: 22,
   },
   strong: {
-    color: '#b2c5ff',
-    fontWeight: '700',
+    color: "#b2c5ff",
+    fontWeight: "700",
   },
   em: {
-    color: '#d7e3fc',
-    fontStyle: 'italic',
+    color: "#d7e3fc",
+    fontStyle: "italic",
   },
   heading1: {
-    color: '#d7e3fc',
+    color: "#d7e3fc",
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
     marginBottom: 6,
     marginTop: 4,
   },
   heading2: {
-    color: '#d7e3fc',
+    color: "#d7e3fc",
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
     marginTop: 4,
   },
   heading3: {
-    color: '#b2c5ff',
+    color: "#b2c5ff",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
     marginTop: 4,
   },
@@ -356,49 +372,49 @@ const markdownStyles = StyleSheet.create({
     marginVertical: 4,
   },
   list_item: {
-    color: '#d7e3fc',
+    color: "#d7e3fc",
     fontSize: 14,
     lineHeight: 22,
     marginBottom: 2,
   },
   bullet_list_icon: {
-    color: '#b2c5ff',
+    color: "#b2c5ff",
     marginRight: 6,
   },
   code_inline: {
-    backgroundColor: '#0a1525',
-    color: '#b2c5ff',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    backgroundColor: "#0a1525",
+    color: "#b2c5ff",
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 13,
     paddingHorizontal: 4,
     borderRadius: 4,
   },
   fence: {
-    backgroundColor: '#0a1525',
+    backgroundColor: "#0a1525",
     borderRadius: 8,
     padding: 12,
     marginVertical: 6,
   },
   code_block: {
-    color: '#b2c5ff',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: "#b2c5ff",
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 13,
   },
   blockquote: {
-    backgroundColor: 'rgba(178,197,255,0.05)',
+    backgroundColor: "rgba(178,197,255,0.05)",
     borderLeftWidth: 3,
-    borderLeftColor: '#b2c5ff',
+    borderLeftColor: "#b2c5ff",
     paddingLeft: 10,
     marginVertical: 6,
   },
   hr: {
-    backgroundColor: '#1f2a3d',
+    backgroundColor: "#1f2a3d",
     height: 1,
     marginVertical: 8,
   },
   link: {
-    color: '#b2c5ff',
-    textDecorationLine: 'underline',
+    color: "#b2c5ff",
+    textDecorationLine: "underline",
   },
   paragraph: {
     marginVertical: 0,

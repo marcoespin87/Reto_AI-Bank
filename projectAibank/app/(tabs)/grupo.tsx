@@ -11,6 +11,7 @@ export default function GrupoScreen() {
   const [objetivos, setObjetivos] = useState<any[]>([]);
   const [progresos, setProgresos] = useState<any[]>([]);
   const [pendientes, setPendientes] = useState<any[]>([]);
+  const [grupoPendiente, setGrupoPendiente] = useState<any | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -48,14 +49,30 @@ export default function GrupoScreen() {
     setUserEmail(userData.email);
     setUserMailes(userData.mailes_acumulados || 0);
 
+    // Buscar si hay un grupo donde el usuario está activo
     const { data: memberData } = await supabase
       .from("group_members")
-      .select("group_id, estado, medalla_actual, estrellas_actuales, mailes_aportados")
+      .select(
+        "group_id, estado, medalla_actual, estrellas_actuales, mailes_aportados",
+      )
       .eq("user_id", userData.id)
       .eq("estado", "activo")
       .maybeSingle();
 
-    if (!memberData) return;
+    // Buscar si hay una solicitud pendiente en algún grupo
+    if (!memberData) {
+      const { data: pendienteMemberData } = await supabase
+        .from("group_members")
+        .select("*, groups(id, nombre, codigo_invitacion)")
+        .eq("user_id", userData.id)
+        .eq("estado", "pendiente")
+        .maybeSingle();
+
+      if (pendienteMemberData && pendienteMemberData.groups) {
+        setGrupoPendiente(pendienteMemberData.groups);
+      }
+      return;
+    }
 
     const { data: grupoData } = await supabase
       .from("groups")
@@ -68,11 +85,11 @@ export default function GrupoScreen() {
 
       if (grupoData.liga_id) {
         const { data: ligaData } = await supabase
-          .from('ligas')
-          .select('nombre')
-          .eq('id', grupoData.liga_id)
+          .from("ligas")
+          .select("nombre")
+          .eq("id", grupoData.liga_id)
           .maybeSingle();
-        if (ligaData) setLigaNombre((ligaData as any).nombre ?? '');
+        if (ligaData) setLigaNombre((ligaData as any).nombre ?? "");
       }
 
       const { data: miembrosData } = await supabase
@@ -433,6 +450,27 @@ export default function GrupoScreen() {
     });
   }
 
+  async function onCancelarSolicitud() {
+    if (!userId || !grupoPendiente) return;
+    setLoading(true);
+
+    const { error } = await supabase
+      .from("group_members")
+      .delete()
+      .eq("user_id", userId)
+      .eq("group_id", grupoPendiente.id);
+
+    setLoading(false);
+    if (error) {
+      Alert.alert("Error", error.message);
+      return;
+    }
+
+    setGrupoPendiente(null);
+    Alert.alert("¡Listo!", "Solicitud cancelada.");
+    await loadData();
+  }
+
   return (
     <GrupoView
       userId={userId}
@@ -470,6 +508,8 @@ export default function GrupoScreen() {
       onRechazarMiembro={rechazarMiembro}
       onRenombrarGrupo={renombrarGrupo}
       ligaNombre={ligaNombre}
+      grupoPendiente={grupoPendiente}
+      onCancelarSolicitud={onCancelarSolicitud}
     />
   );
 }
