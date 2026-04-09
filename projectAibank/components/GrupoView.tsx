@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import {
     ActivityIndicator,
     Modal,
@@ -12,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import BottomNav from "./BottomNav";
+import { IconSymbol } from "./ui/icon-symbol";
 
 interface GrupoViewProps {
   userId: number | null;
@@ -27,6 +29,7 @@ interface GrupoViewProps {
   modalRenombrar: boolean;
   modalMatchmaking: boolean;
   modalResultadoMatch: boolean;
+  modalPendientes: boolean;
   nombreGrupo: string;
   codigoInput: string;
   gruposMatch: any[];
@@ -36,6 +39,7 @@ interface GrupoViewProps {
   setModalRenombrar: (v: boolean) => void;
   setModalMatchmaking: (v: boolean) => void;
   setModalResultadoMatch: (v: boolean) => void;
+  setModalPendientes: (v: boolean) => void;
   setNombreGrupo: (v: string) => void;
   setCodigoInput: (v: string) => void;
   onCompartirCodigo: () => void;
@@ -62,6 +66,7 @@ export default function GrupoView({
   modalRenombrar,
   modalMatchmaking,
   modalResultadoMatch,
+  modalPendientes,
   nombreGrupo,
   codigoInput,
   gruposMatch,
@@ -71,6 +76,7 @@ export default function GrupoView({
   setModalRenombrar,
   setModalMatchmaking,
   setModalResultadoMatch,
+  setModalPendientes,
   setNombreGrupo,
   setCodigoInput,
   onCompartirCodigo,
@@ -98,6 +104,30 @@ export default function GrupoView({
     return p?.progreso_actual || 0;
   }
 
+  // Calcular estrellas dinámicamente según mAiles
+  function calcularEstrellas(mailes: number): number {
+    if (mailes >= 5000) return 5;
+    if (mailes >= 3000) return 4;
+    if (mailes >= 1500) return 3;
+    if (mailes >= 500) return 2;
+    return 1;
+  }
+
+  // Renderizar estrellas como componentes
+  function renderStars(count: number) {
+    return Array.from({ length: count }, (_, i) => (
+      <Ionicons key={i} name="star" size={12} color={colors.gold} />
+    )).map((star, i) => (
+      <View key={i} style={{ marginRight: 2 }}>
+        {star}
+      </View>
+    ));
+  }
+
+  // Limitar pendientes a 2
+  const pendientesVisibles = pendientes.slice(0, 2);
+  const pendientesOcultas = Math.max(0, pendientes.length - 2);
+
   const s = getStyles(colors);
 
   return (
@@ -117,40 +147,99 @@ export default function GrupoView({
         {/* PANTALLA SIN GRUPO */}
         {!grupo ? (
           <View style={s.noGroupContainer}>
-            <Text style={s.noGroupIcon}>👥</Text>
-            <Text style={s.noGroupTitle}>Sin grupo activo</Text>
-            <Text style={s.noGroupSub}>
-              Crea un grupo o únete con un código
-            </Text>
-
-            <TouchableOpacity
-              style={s.btnPrimary}
-              onPress={() => setModalCrear(true)}
-            >
-              <Text style={s.btnPrimaryText}>➕ Crear grupo</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={s.btnSecondary}
-              onPress={() => setModalUnirse(true)}
-            >
-              <Text style={s.btnSecondaryText}>🔑 Unirse con código</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={s.btnSecondary}
-              onPress={() => setModalMatchmaking(true)}
-            >
-              <Text style={s.btnSecondaryText}>
-                🎯 Buscar grupo por matchmaking
+            {/* Hero */}
+            <View style={s.noGroupHero}>
+              <View style={s.noGroupIconWrap}>
+                <Ionicons
+                  name="people-outline"
+                  size={40}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={s.noGroupTitle}>Sin grupo activo</Text>
+              <Text style={s.noGroupSub}>
+                Únete a un equipo, compite en liga y acumula mAiles juntos
               </Text>
-            </TouchableOpacity>
+            </View>
+
+            {/* Acciones */}
+            <View style={s.noGroupActions}>
+              <TouchableOpacity
+                style={s.noGroupBtnPrimary}
+                onPress={() => setModalCrear(true)}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name="add-circle-outline"
+                  size={26}
+                  color={colors.textOnGold}
+                />
+                <View style={s.noGroupBtnTextCol}>
+                  <Text style={s.noGroupBtnPrimaryText}>Crear grupo</Text>
+                  <Text style={s.noGroupBtnPrimarySub}>
+                    Sé el capitán de tu equipo
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.textOnGold}
+                  style={{ opacity: 0.6 }}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={s.noGroupBtnSecondary}
+                onPress={() => setModalUnirse(true)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="key-outline" size={24} color={colors.primary} />
+                <View style={s.noGroupBtnTextCol}>
+                  <Text style={s.noGroupBtnSecondaryText}>
+                    Unirse con código
+                  </Text>
+                  <Text style={s.noGroupBtnSecondarySub}>
+                    Ingresa el código de invitación
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.textSecondary}
+                  style={{ opacity: 0.5 }}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={s.noGroupBtnSecondary}
+                onPress={() => setModalMatchmaking(true)}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name="radio-button-on-outline"
+                  size={24}
+                  color={colors.primary}
+                />
+                <View style={s.noGroupBtnTextCol}>
+                  <Text style={s.noGroupBtnSecondaryText}>Matchmaking</Text>
+                  <Text style={s.noGroupBtnSecondarySub}>
+                    Busca grupos con tu nivel
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.textSecondary}
+                  style={{ opacity: 0.5 }}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <View key="grupo-content-wrapper">
-            {/* Header */}
+            {/* Header con Badge de Solicitudes Pendientes */}
             <View style={s.header}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={s.groupName}>{grupo.nombre}</Text>
                 <View style={s.groupBadgeRow}>
                   <View style={s.groupBadge}>
@@ -160,17 +249,27 @@ export default function GrupoView({
                 </View>
               </View>
               <View style={s.headerBtns}>
-                <TouchableOpacity onPress={onRefresh} style={s.iconBtn}>
-                  <Text>🔄</Text>
-                </TouchableOpacity>
+                {/* Badge de notificación */}
+                {pendientes.length > 0 && (
+                  <View style={s.notificationBadge}>
+                    <Text style={s.notificationBadgeText}>
+                      {pendientes.length}
+                    </Text>
+                  </View>
+                )}
                 <TouchableOpacity
                   onPress={() => setModalRenombrar(true)}
                   style={s.iconBtn}
+                  accessibilityLabel="Renombrar grupo"
                 >
-                  <Text>✏️</Text>
+                  <IconSymbol name="edit" size={22} color={colors.primary} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={onCompartirCodigo} style={s.iconBtn}>
-                  <Text>🔗</Text>
+                <TouchableOpacity
+                  onPress={onCompartirCodigo}
+                  style={s.iconBtn}
+                  accessibilityLabel="Compartir código"
+                >
+                  <IconSymbol name="share" size={22} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -200,11 +299,31 @@ export default function GrupoView({
               </View>
             </View>
 
-            {/* Solicitudes pendientes */}
+            {/* Solicitudes pendientes - Máximo 2 visibles */}
             {pendientes.length > 0 ? (
               <View style={s.sectionCard}>
-                <Text style={s.sectionTitle}>⏳ Solicitudes pendientes</Text>
-                {pendientes.map((p) => (
+                <View style={s.sectionHeaderWithBadge}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text style={s.sectionTitle}>Solicitudes pendientes</Text>
+                  </View>
+                  {pendientes.length > 2 && (
+                    <View style={s.countBadge}>
+                      <Text style={s.countBadgeText}>{pendientes.length}</Text>
+                    </View>
+                  )}
+                </View>
+                {pendientesVisibles.map((p) => (
                   <View key={`pending-${p.user_id}`} style={s.pendienteItem}>
                     <View style={s.pendienteInfo}>
                       <View style={s.miniAvatar}>
@@ -222,23 +341,58 @@ export default function GrupoView({
                         style={s.btnAprobar}
                         onPress={() => onAprobarMiembro(p.user_id)}
                       >
-                        <Text style={s.btnAprobarText}>✓ Aprobar</Text>
+                        <Ionicons
+                          name="checkmark"
+                          size={14}
+                          color={colors.primary}
+                        />
+                        <Text style={s.btnAprobarText}>Aprobar</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={s.btnRechazar}
                         onPress={() => onRechazarMiembro(p.user_id)}
                       >
-                        <Text style={s.btnRechazarText}>✗ Rechazar</Text>
+                        <Ionicons name="close" size={14} color={colors.error} />
+                        <Text style={s.btnRechazarText}>Rechazar</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 ))}
+                {pendientesOcultas > 0 && (
+                  <TouchableOpacity
+                    style={s.verMasButton}
+                    onPress={() => setModalPendientes(true)}
+                  >
+                    <Ionicons
+                      name="chevron-down"
+                      size={16}
+                      color={colors.primary}
+                    />
+                    <Text style={s.verMasText}>
+                      Ver {pendientesOcultas} más solicitudes
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : null}
 
             {/* Miembros */}
             <View style={s.sectionCard}>
-              <Text style={s.sectionTitle}>👥 Miembros del equipo</Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 12,
+                }}
+              >
+                <Ionicons
+                  name="people-outline"
+                  size={18}
+                  color={colors.primary}
+                />
+                <Text style={s.sectionTitle}>Miembros del equipo</Text>
+              </View>
               {miembrosSorted.map((m, i) => (
                 <View
                   key={m.id}
@@ -259,19 +413,45 @@ export default function GrupoView({
                         {m.users?.nombre?.charAt(0).toUpperCase()}
                       </Text>
                     </View>
-                    <View>
-                      <Text
-                        style={[
-                          s.memberName,
-                          m.user_id === userId && { color: "#b2c5ff" },
-                        ]}
+                    <View style={{ flex: 1 }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
                       >
-                        {m.users?.nombre}
-                        {m.user_id === userId ? " (Tú)" : ""}
-                      </Text>
-                      <Text style={s.memberSub}>
-                        Medalla {m.medalla_actual} • ⭐{m.estrellas_actuales}
-                      </Text>
+                        <Text
+                          style={[
+                            s.memberName,
+                            m.user_id === userId && s.memberNameMe,
+                          ]}
+                        >
+                          {m.users?.nombre}
+                        </Text>
+                        {m.user_id === userId && (
+                          <View style={s.tuBadge}>
+                            <Text style={s.tuBadgeText}>Tú</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                          marginTop: 2,
+                        }}
+                      >
+                        <Text style={s.memberSub}>
+                          Medalla {m.medalla_actual}
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: 2 }}>
+                          {renderStars(
+                            calcularEstrellas(m.users?.mailes_acumulados || 0),
+                          )}
+                        </View>
+                      </View>
                     </View>
                   </View>
                   <Text style={s.memberMailes}>
@@ -286,7 +466,11 @@ export default function GrupoView({
                   onPress={onCompartirCodigo}
                 >
                   <View style={s.inviteIcon}>
-                    <Text style={{ fontSize: 20 }}>➕</Text>
+                    <Ionicons
+                      name="person-add-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
                   </View>
                   <Text style={s.inviteText}>Invitar a un amigo</Text>
                 </TouchableOpacity>
@@ -296,7 +480,16 @@ export default function GrupoView({
             {/* Objetivos */}
             <View style={s.sectionCard}>
               <View style={s.sectionHeader}>
-                <Text style={s.sectionTitle}>🎯 Objetivos de liga</Text>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
+                  <Ionicons
+                    name="flag-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                  <Text style={s.sectionTitle}>Objetivos de liga</Text>
+                </View>
                 <Text style={s.sectionSub}>ESTA SEMANA</Text>
               </View>
               {objetivos.map((obj) => {
@@ -343,11 +536,88 @@ export default function GrupoView({
         <View style={{ height: 100 }} />
       </ScrollView>
 
+      {/* Modal Solicitudes Pendientes Expandido */}
+      <Modal visible={modalPendientes} transparent animationType="slide">
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <View style={s.modalHeaderWithClose}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={s.modalTitle}>
+                  Solicitudes ({pendientes.length})
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setModalPendientes(false)}
+                style={s.closeBtn}
+              >
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: "80%" }}
+            >
+              {pendientes.map((p) => (
+                <View
+                  key={`modal-pending-${p.user_id}`}
+                  style={s.pendienteItemModal}
+                >
+                  <View style={s.pendienteInfo}>
+                    <View style={s.miniAvatar}>
+                      <Text style={s.miniAvatarText}>
+                        {p.users?.nombre?.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.memberName}>{p.users?.nombre}</Text>
+                      <Text style={s.memberSub}>{p.users?.email}</Text>
+                    </View>
+                  </View>
+                  <View style={s.voteRow}>
+                    <TouchableOpacity
+                      style={s.btnAprobar}
+                      onPress={() => onAprobarMiembro(p.user_id)}
+                    >
+                      <Ionicons
+                        name="checkmark"
+                        size={14}
+                        color={colors.primary}
+                      />
+                      <Text style={s.btnAprobarText}>Aprobar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.btnRechazar}
+                      onPress={() => onRechazarMiembro(p.user_id)}
+                    >
+                      <Ionicons name="close" size={14} color={colors.error} />
+                      <Text style={s.btnRechazarText}>Rechazar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+            <TouchableOpacity
+              style={s.btnCancel}
+              onPress={() => setModalPendientes(false)}
+            >
+              <Text style={s.btnCancelText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modales - SIEMPRE EN ÁRBOL (nunca se eliminan) */}
       <Modal visible={modalCrear} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>➕ Crear grupo</Text>
+            <Text style={s.modalTitle}>Crear grupo</Text>
             <Text style={s.inputLabel}>NOMBRE DEL GRUPO</Text>
             <TextInput
               style={s.input}
@@ -380,7 +650,7 @@ export default function GrupoView({
       <Modal visible={modalUnirse} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>🔑 Unirse con código</Text>
+            <Text style={s.modalTitle}>Unirse con código</Text>
             <Text style={s.inputLabel}>CÓDIGO DE INVITACIÓN</Text>
             <TextInput
               style={s.input}
@@ -414,7 +684,7 @@ export default function GrupoView({
       <Modal visible={modalRenombrar} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>✏️ Renombrar grupo</Text>
+            <Text style={s.modalTitle}>Renombrar grupo</Text>
             <Text style={s.inputLabel}>NUEVO NOMBRE</Text>
             <TextInput
               style={s.input}
@@ -447,7 +717,7 @@ export default function GrupoView({
       <Modal visible={modalMatchmaking} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>🎯 Matchmaking</Text>
+            <Text style={s.modalTitle}>Matchmaking</Text>
             <Text style={s.matchmakingDesc}>
               Buscaremos un grupo con perfiles de gasto similares al tuyo en
               Liga Plata.
@@ -476,7 +746,7 @@ export default function GrupoView({
       <Modal visible={modalResultadoMatch} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>🎯 Grupos compatibles</Text>
+            <Text style={s.modalTitle}>Grupos compatibles</Text>
             <Text style={s.matchmakingDesc}>
               Encontramos {gruposMatch.length} grupo
               {gruposMatch.length > 1 ? "s" : ""} con mAiles similares a los
@@ -501,11 +771,42 @@ export default function GrupoView({
                   <View key={g.id} style={s.grupoMatchItem}>
                     <View style={s.grupoMatchInfo}>
                       <Text style={s.grupoMatchNombre}>{g.nombre}</Text>
-                      <Text style={s.grupoMatchSub}>
-                        👥 {miembrosActivos.length}/{g.max_miembros} miembros
-                        {"  "}⭐ {promedioMailes.toLocaleString()} mAiles
-                        promedio
-                      </Text>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Ionicons
+                            name="people-outline"
+                            size={12}
+                            color={colors.textSecondary}
+                          />
+                          <Text style={s.grupoMatchSub}>
+                            {miembrosActivos.length}/{g.max_miembros} miembros
+                          </Text>
+                        </View>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Ionicons name="star" size={12} color={colors.gold} />
+                          <Text style={s.grupoMatchSub}>
+                            {promedioMailes.toLocaleString()} mA
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                     <TouchableOpacity
                       style={s.btnUnirse}
@@ -545,24 +846,90 @@ function getStyles(
 
     noGroupContainer: {
       flex: 1,
-      justifyContent: "center",
+      paddingTop: 40,
+      paddingBottom: 100,
+    },
+    noGroupHero: {
       alignItems: "center",
       paddingHorizontal: 32,
-      gap: 12,
-      paddingBottom: 80,
+      marginBottom: 32,
     },
-    noGroupIcon: { fontSize: 64, marginBottom: 8 },
+    noGroupIconWrap: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      backgroundColor: colors.primaryDim,
+      borderWidth: 1.5,
+      borderColor: colors.primaryBorder,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 20,
+    },
     noGroupTitle: {
       color: colors.textPrimary,
-      fontSize: 22,
+      fontSize: 24,
       fontWeight: "800",
       textAlign: "center",
+      letterSpacing: -0.5,
+      marginBottom: 8,
     },
     noGroupSub: {
       color: colors.textSecondary,
-      fontSize: 14,
+      fontSize: 13,
       textAlign: "center",
-      marginBottom: 16,
+      lineHeight: 20,
+    },
+    noGroupActions: {
+      gap: 10,
+    },
+    noGroupBtnPrimary: {
+      backgroundColor: colors.gold,
+      borderRadius: 18,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      shadowColor: colors.goldShadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 1,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    noGroupBtnTextCol: { flex: 1 },
+    noGroupBtnPrimaryText: {
+      color: colors.textOnGold,
+      fontSize: 15,
+      fontWeight: "800",
+    },
+    noGroupBtnPrimarySub: {
+      color: colors.textOnGold,
+      fontSize: 11,
+      fontWeight: "500",
+      opacity: 0.75,
+      marginTop: 1,
+    },
+    noGroupBtnSecondary: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 18,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      borderWidth: 0.5,
+      borderColor: colors.borderMedium,
+    },
+    noGroupBtnSecondaryText: {
+      color: colors.textPrimary,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    noGroupBtnSecondarySub: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: "500",
+      marginTop: 1,
     },
 
     header: {
@@ -618,8 +985,8 @@ function getStyles(
       borderStyle: "dashed",
     },
     codigoLabel: {
-      color: colors.textSecondary,
-      fontSize: 9,
+      color: colors.textPrimary,
+      fontSize: 11,
       fontWeight: "700",
       letterSpacing: 2,
       marginBottom: 4,
@@ -630,7 +997,7 @@ function getStyles(
       fontWeight: "900",
       letterSpacing: 6,
     },
-    codigoShare: { color: colors.textMuted, fontSize: 10, marginTop: 4 },
+    codigoShare: { color: colors.textPrimary, fontSize: 11, marginTop: 4 },
 
     statsRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
     statCard: {
@@ -644,8 +1011,8 @@ function getStyles(
     },
     statValue: { color: colors.textPrimary, fontSize: 18, fontWeight: "800" },
     statLabel: {
-      color: colors.textSecondary,
-      fontSize: 9,
+      color: colors.textPrimary,
+      fontSize: 11,
       fontWeight: "600",
       textAlign: "center",
       marginTop: 2,
@@ -672,8 +1039,8 @@ function getStyles(
       marginBottom: 12,
     },
     sectionSub: {
-      color: colors.textSecondary,
-      fontSize: 9,
+      color: colors.textPrimary,
+      fontSize: 11,
       fontWeight: "600",
       letterSpacing: 1,
     },
@@ -745,7 +1112,7 @@ function getStyles(
       fontSize: 13,
       fontWeight: "700",
     },
-    memberSub: { color: colors.textSecondary, fontSize: 10, marginTop: 1 },
+    memberSub: { color: colors.textPrimary, fontSize: 11, marginTop: 1 },
     memberMailes: { color: colors.gold, fontSize: 13, fontWeight: "700" },
 
     inviteSlot: {
@@ -765,7 +1132,7 @@ function getStyles(
       alignItems: "center",
       justifyContent: "center",
     },
-    inviteText: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
+    inviteText: { color: colors.textPrimary, fontSize: 13, fontWeight: "600" },
 
     objetivoItem: { marginBottom: 16 },
     objetivoHeader: {
@@ -781,8 +1148,8 @@ function getStyles(
       flex: 1,
     },
     objetivoDesc: {
-      color: colors.textSecondary,
-      fontSize: 11,
+      color: colors.textPrimary,
+      fontSize: 12,
       marginBottom: 8,
     },
     mailesReward: {
@@ -791,14 +1158,14 @@ function getStyles(
       paddingVertical: 3,
       borderRadius: 10,
     },
-    mailesRewardText: { color: colors.gold, fontSize: 11, fontWeight: "700" },
+    mailesRewardText: { color: colors.gold, fontSize: 12, fontWeight: "700" },
     progressRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       marginBottom: 4,
     },
-    progressText: { color: colors.textSecondary, fontSize: 10 },
-    progressPct: { color: colors.textSecondary, fontSize: 10 },
+    progressText: { color: colors.textPrimary, fontSize: 11 },
+    progressPct: { color: colors.textPrimary, fontSize: 11 },
     progressBar: {
       height: 6,
       backgroundColor: colors.borderMedium,
@@ -916,5 +1283,90 @@ function getStyles(
       paddingVertical: 8,
     },
     btnUnirseText: { color: "#002b73", fontWeight: "800", fontSize: 12 },
+
+    // Nuevos estilos para optimizaciones
+    notificationBadge: {
+      backgroundColor: colors.error,
+      borderRadius: 12,
+      width: 24,
+      height: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 4,
+    },
+    notificationBadgeText: {
+      color: "white",
+      fontSize: 12,
+      fontWeight: "800",
+    },
+    memberNameMe: {
+      color: colors.textPrimary,
+      fontWeight: "800",
+    },
+    tuBadge: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    tuBadgeText: {
+      color: "white",
+      fontSize: 9,
+      fontWeight: "700",
+    },
+    sectionHeaderWithBadge: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    countBadge: {
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    countBadgeText: {
+      color: "white",
+      fontSize: 11,
+      fontWeight: "700",
+    },
+    verMasButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      marginTop: 8,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryDim,
+    },
+    verMasText: {
+      color: colors.primary,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    pendienteItemModal: {
+      marginBottom: 16,
+      paddingBottom: 16,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.borderMedium,
+      gap: 10,
+    },
+    modalHeaderWithClose: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.borderMedium,
+    },
+    closeBtn: {
+      padding: 4,
+    },
   });
 }

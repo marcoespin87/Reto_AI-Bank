@@ -274,6 +274,7 @@ CREATE TABLE public.users (
   usa_app_movil boolean DEFAULT true,
   sesiones_app_semana integer DEFAULT 0,
   compras_online_pct numeric DEFAULT 0,
+  cedula character varying UNIQUE,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_economic_tier_id_fkey FOREIGN KEY (economic_tier_id) REFERENCES public.economic_tiers(id)
 );

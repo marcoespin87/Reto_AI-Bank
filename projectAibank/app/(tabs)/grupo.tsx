@@ -18,12 +18,13 @@ export default function GrupoScreen() {
   const [modalUnirse, setModalUnirse] = useState(false);
   const [modalRenombrar, setModalRenombrar] = useState(false);
   const [modalMatchmaking, setModalMatchmaking] = useState(false);
+  const [modalResultadoMatch, setModalResultadoMatch] = useState(false);
+  const [modalPendientes, setModalPendientes] = useState(false);
 
   const [nombreGrupo, setNombreGrupo] = useState("");
   const [codigoInput, setCodigoInput] = useState("");
   const [userMailes, setUserMailes] = useState(0);
   const [gruposMatch, setGruposMatch] = useState<any[]>([]);
-  const [modalResultadoMatch, setModalResultadoMatch] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -48,10 +49,10 @@ export default function GrupoScreen() {
 
     const { data: memberData } = await supabase
       .from("group_members")
-      .select("group_id, estado")
+      .select("group_id, estado, medalla_actual, estrellas_actuales, mailes_aportados")
       .eq("user_id", userData.id)
       .eq("estado", "activo")
-      .single();
+      .maybeSingle();
 
     if (!memberData) return;
 
@@ -341,68 +342,62 @@ export default function GrupoScreen() {
   async function aprobarMiembro(candidatoId: number) {
     if (!grupo || !userId) return;
 
-    const { data: votosExistentes } = await supabase
-      .from("group_join_votes")
-      .select("id")
-      .eq("group_id", grupo.id)
-      .eq("candidato_id", candidatoId)
-      .eq("votante_id", userId)
-      .single();
+    try {
+      setLoading(true);
 
-    if (votosExistentes) {
-      Alert.alert("Aviso", "Ya votaste por este candidato");
-      return;
-    }
-
-    await supabase.from("group_join_votes").insert({
-      group_id: grupo.id,
-      candidato_id: candidatoId,
-      votante_id: userId,
-      voto: "aprobado",
-      fecha: new Date().toISOString().split("T")[0],
-    });
-
-    const { count: votosAprobados } = await supabase
-      .from("group_join_votes")
-      .select("*", { count: "exact", head: true })
-      .eq("group_id", grupo.id)
-      .eq("candidato_id", candidatoId)
-      .eq("voto", "aprobado");
-
-    const totalMiembros = miembros.length;
-
-    if ((votosAprobados || 0) >= totalMiembros) {
-      await supabase
+      const { error } = await supabase
         .from("group_members")
         .update({
           estado: "activo",
           fecha_ingreso: new Date().toISOString().split("T")[0],
         })
         .eq("group_id", grupo.id)
-        .eq("user_id", candidatoId);
+        .eq("user_id", candidatoId)
+        .eq("estado", "pendiente");
 
-      Alert.alert(
-        "¡Aprobado! 🎉",
-        "Todos los miembros aprobaron. El nuevo integrante ya es parte del grupo.",
-      );
-    } else {
-      Alert.alert(
-        "Voto registrado ✓",
-        `${votosAprobados} de ${totalMiembros} votos necesarios.\nFaltan ${totalMiembros - (votosAprobados || 0)} votos más.`,
-      );
+      if (error) {
+        Alert.alert("Error al aprobar", error.message);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
+      loadData();
+      Alert.alert("¡Aprobado! 🎉", "El miembro ya es parte del grupo.");
+    } catch (err) {
+      console.error("Error en aprobarMiembro:", err);
+      Alert.alert("Error inesperado", String(err));
+      setLoading(false);
     }
-    loadData();
   }
 
   async function rechazarMiembro(candidatoId: number) {
     if (!grupo) return;
-    await supabase
-      .from("group_members")
-      .delete()
-      .eq("group_id", grupo.id)
-      .eq("user_id", candidatoId);
-    loadData();
-    Alert.alert("Rechazado", "La solicitud fue rechazada.");
+
+    try {
+      setLoading(true);
+
+      const { error } = await supabase
+        .from("group_members")
+        .delete()
+        .eq("group_id", grupo.id)
+        .eq("user_id", candidatoId)
+        .eq("estado", "pendiente");
+
+      if (error) {
+        Alert.alert("Error al rechazar", error.message);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
+      loadData();
+      Alert.alert("Rechazado ❌", "La solicitud fue rechazada.");
+    } catch (err) {
+      console.error("Error en rechazarMiembro:", err);
+      Alert.alert("Error inesperado", String(err));
+      setLoading(false);
+    }
   }
 
   async function renombrarGrupo() {
@@ -443,6 +438,7 @@ export default function GrupoScreen() {
       modalRenombrar={modalRenombrar}
       modalMatchmaking={modalMatchmaking}
       modalResultadoMatch={modalResultadoMatch}
+      modalPendientes={modalPendientes}
       nombreGrupo={nombreGrupo}
       codigoInput={codigoInput}
       gruposMatch={gruposMatch}
@@ -452,6 +448,7 @@ export default function GrupoScreen() {
       setModalRenombrar={setModalRenombrar}
       setModalMatchmaking={setModalMatchmaking}
       setModalResultadoMatch={setModalResultadoMatch}
+      setModalPendientes={setModalPendientes}
       setNombreGrupo={setNombreGrupo}
       setCodigoInput={setCodigoInput}
       onCompartirCodigo={compartirCodigo}

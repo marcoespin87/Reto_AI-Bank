@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import BottomNav from "./BottomNav";
+import ProgressToggleCard, { ProgressData } from "./ProgressToggleCard";
+import StadiumCard from "./StadiumCard";
 
 interface Transaction {
   id: string | number;
@@ -37,6 +39,7 @@ interface HomeUIProps {
   numeroCuenta: string;
   transactions: Transaction[];
   misStickersRecientes: UserSticker[];
+  progressData: ProgressData;
   refreshing: boolean;
   onRefresh: () => void;
   onCopiarCuenta: () => void;
@@ -88,6 +91,7 @@ export default function HomeUI({
   numeroCuenta,
   transactions,
   misStickersRecientes,
+  progressData,
   refreshing,
   onRefresh,
   onCopiarCuenta,
@@ -144,9 +148,9 @@ export default function HomeUI({
             <Text style={s.cardBrand}>mAiles</Text>
           </View>
           <View style={s.cardMid}>
-            <Text style={s.cardBalanceLabel}>Saldo disponible</Text>
+            <Text style={s.cardBalanceLabel}>Mailes acumulados</Text>
             <Text style={s.cardBalance}>
-              ${saldo.toLocaleString("es", { minimumFractionDigits: 2 })}
+              {mailes.toLocaleString("es")} mAiles
             </Text>
           </View>
           <View style={s.cardBottom}>
@@ -167,53 +171,15 @@ export default function HomeUI({
           </View>
         </View>
 
-        {/* mAiles Progress */}
-        <View style={s.section}>
-          <View style={s.mailesRow}>
-            <View style={s.mailesLeft}>
-              <View style={s.mailesIconWrap}>
-                <Text style={s.mailesIcon}>⭐</Text>
-              </View>
-              <View>
-                <Text style={s.mailesLabel}>Tu Progreso</Text>
-                <Text style={s.mailesValue}>
-                  {mailes.toLocaleString()} mAiles
-                </Text>
-              </View>
-            </View>
-            <View style={s.medalBadge}>
-              <Text style={s.medalText}>🥇 Medalla 3</Text>
-            </View>
-          </View>
-          <View style={s.progressRow}>
-            <Text style={s.progressLabel}>
-              12 compras para tu próxima estrella
-            </Text>
-            <Text style={s.starsText}>★★★☆☆</Text>
-          </View>
-          <View style={s.progressBar}>
-            <View style={[s.progressFill, { width: "60%" }]} />
-          </View>
-        </View>
+        {/* Tu Progreso / Gasto Semanal - Toggle Card */}
+        <ProgressToggleCard
+          mailes={mailes}
+          colors={colors}
+          progressData={progressData}
+        />
 
-        {/* Weekly Spending */}
-        <View style={s.section}>
-          <View style={s.weeklyRow}>
-            <View>
-              <Text style={s.sectionSubtitle}>Gasto semanal</Text>
-              <Text style={s.weeklyText}>
-                Esta semana: <Text style={s.weeklyAmount}>$340</Text> en compras
-              </Text>
-            </View>
-            <View style={s.mailesBadge}>
-              <Text style={s.mailesBadgeText}>⭐ +240 mAiles</Text>
-            </View>
-          </View>
-          <View style={s.progressBar}>
-            <View style={[s.progressFillGold, { width: "66%" }]} />
-          </View>
-          <Text style={s.nextStar}>⭐ próxima estrella en 4 compras más</Text>
-        </View>
+        {/* Stadium Card - World Cup 2026 */}
+        <StadiumCard onPress={() => router.replace("/(tabs)/mundial")} />
 
         {/* Cromos Recientes */}
         <View style={s.transHeader}>
@@ -350,6 +316,9 @@ function getStyles(
     typeof import("../context/ThemeContext").useTheme
   >["colors"],
 ) {
+  // Detectar modo: si primary es azul claro (#b2c5ff) es DARK, si es #0052cc es LIGHT
+  const isDark = colors.primary === "#b2c5ff";
+
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.background },
     scroll: { paddingHorizontal: 20 },
@@ -414,7 +383,9 @@ function getStyles(
       width: 180,
       height: 180,
       borderRadius: 90,
-      backgroundColor: "rgba(255,255,255,0.12)",
+      backgroundColor: isDark
+        ? "rgba(255,255,255,0.12)"
+        : "rgba(255,255,255,0.15)",
     },
     cardPatternCircle2: {
       position: "absolute",
@@ -423,7 +394,9 @@ function getStyles(
       width: 120,
       height: 120,
       borderRadius: 60,
-      backgroundColor: "rgba(255,214,91,0.15)",
+      backgroundColor: isDark
+        ? "rgba(255,214,91,0.15)"
+        : "rgba(255,214,91,0.2)",
     },
     cardPatternLine: {
       position: "absolute",
@@ -431,7 +404,7 @@ function getStyles(
       left: 0,
       right: 0,
       height: 70,
-      backgroundColor: "rgba(0,0,0,0.06)",
+      backgroundColor: isDark ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.08)",
     },
     cardTop: {
       flexDirection: "row",
@@ -439,32 +412,34 @@ function getStyles(
       marginBottom: 20,
     },
     cardType: {
-      color: "#002b73",
+      color: isDark ? "#002b73" : "#ffffff",
       fontSize: 12,
       fontWeight: "700",
       letterSpacing: 0.5,
+      opacity: isDark ? 1 : 0.9,
     },
     cardBrand: {
-      color: "#002b73",
+      color: isDark ? "#002b73" : "#ffffff",
       fontSize: 22,
       fontWeight: "900",
       fontStyle: "italic",
+      opacity: isDark ? 1 : 0.95,
     },
     cardMid: { marginBottom: 16 },
     cardBalanceLabel: {
-      color: "rgba(0,43,115,0.65)",
+      color: isDark ? "rgba(0,43,115,0.65)" : "rgba(255,255,255,0.75)",
       fontSize: 11,
       fontWeight: "500",
       marginBottom: 2,
     },
     cardBalance: {
-      color: "#002b73",
+      color: isDark ? "#002b73" : "#ffffff",
       fontSize: 36,
       fontWeight: "800",
       letterSpacing: -1,
-      textShadowColor: "rgba(0,43,115,0.15)",
+      textShadowColor: isDark ? "rgba(0,43,115,0.15)" : "rgba(0,0,0,0.2)",
       textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 4,
+      textShadowRadius: isDark ? 4 : 3,
     },
     cardBottom: {
       flexDirection: "row",
@@ -473,13 +448,18 @@ function getStyles(
     },
     cardNumberWrap: {},
     cardNumber: {
-      color: "#002b73",
+      color: isDark ? "#002b73" : "#ffffff",
       fontFamily: "monospace",
       fontSize: 13,
       letterSpacing: 3,
       fontWeight: "600",
+      opacity: isDark ? 1 : 0.85,
     },
-    cardCopyHint: { color: "rgba(0,43,115,0.45)", fontSize: 9, marginTop: 2 },
+    cardCopyHint: {
+      color: isDark ? "rgba(0,43,115,0.45)" : "rgba(255,255,255,0.65)",
+      fontSize: 9,
+      marginTop: 2,
+    },
     cardChip: { flexDirection: "row" },
     chipCircle1: {
       width: 26,

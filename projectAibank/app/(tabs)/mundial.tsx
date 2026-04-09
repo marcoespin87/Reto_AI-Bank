@@ -85,7 +85,10 @@ export default function MundialScreen() {
       return;
     }
     if (prediccionEnviada) {
-      Alert.alert("Ya predijiste", "Solo puedes enviar una predicción por partido");
+      Alert.alert(
+        "Ya predijiste",
+        "Solo puedes enviar una predicción por partido",
+      );
       return;
     }
 
