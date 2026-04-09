@@ -239,7 +239,7 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                   {[
                     { key: 'Monto pagado',   val: `$${MONTO_DEMO}.00`,       vc: colors.textPrimary },
                     { key: 'Tasa mAiles',    val: '10 mAiles por cada $100',        vc: colors.primary     },
-                    { key: 'Cromos ganados', val: `${CROMOS_DEMO} cromos 🃏`, vc: colors.primary     },
+                    
                   ].map((row, i) => (
                     <View key={i} style={[s.detalleRow, i > 0 && { borderTopWidth: 0.5, borderTopColor: colors.borderMedium }]}>
                       <Text style={[s.detalleKey, { color: colors.textSecondary }]}>{row.key}</Text>
@@ -259,10 +259,6 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
             {paso === 3 && (
               <View style={s.contenido}>
                 <UbicacionChip icono="🏦" texto="Banco → por cada $20 que gastes gana 1 cromo" />
-
-                <Text style={[s.cromosGanados, { color: colors.textSecondary }]}>
-                  ${MONTO_DEMO} ÷ $20 = {CROMOS_DEMO} cromos ganados
-                </Text>
 
                 <Animated.View style={[
                   s.cromoCard,
