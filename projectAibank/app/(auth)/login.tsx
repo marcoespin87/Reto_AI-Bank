@@ -16,13 +16,6 @@ import { supabase } from "../../lib/supabase";
 
 type Screen = "splash" | "cedula" | "password" | "bienvenida";
 
-const EMAILS_PRUEBA = [
-  "usuario1@aibank.test",
-  "usuario2@aibank.test",
-  "usuario3@aibank.test",
-  "demo@aibank.test",
-];
-
 export default function LoginScreen() {
   const [screen, setScreen] = useState<Screen>("splash");
   const [cedula, setCedula] = useState("");
@@ -240,62 +233,41 @@ export default function LoginScreen() {
 
   // BIENVENIDA / CÉDULA NO ENCONTRADA
   return (
-    <SafeAreaView style={s.root}>
-      <ScrollView
-        contentContainerStyle={s.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={s.glowTop} />
-        <View style={s.glowBottom} />
+      <SafeAreaView style={s.root}>
+        <ScrollView
+          contentContainerStyle={s.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={s.glowTop} />
+          <View style={s.glowBottom} />
 
-        <View style={s.logoArea}>
-          <View style={s.logoIconWrap}>
-            <Text style={s.logoIconText}>⚽</Text>
+          <View style={s.logoArea}>
+            <View style={s.logoIconWrap}>
+              <Text style={s.logoIconText}>⚽</Text>
+            </View>
+            <Text style={s.logoTitle}>AI-Bank</Text>
+            <Text style={s.logoSub}>mAiles</Text>
           </View>
-          <Text style={s.logoTitle}>Bienvenido</Text>
-          <Text style={s.logoSub}>Sistema de Pruebas</Text>
-        </View>
 
-        <View style={s.card}>
-          {cedulaNotFound ? (
-            <>
-              <Text style={s.errorMessage}>
-                ❌ Lamentablemente, la cédula ingresada no se encuentra
-                registrada
+          <View style={s.card}>
+            <Text style={s.errorIcon}>⚠️</Text>
+            <Text style={s.errorTitle}>Cédula no registrada</Text>
+            <Text style={s.errorMessage}>
+              La cédula ingresada no está asociada a ninguna cuenta AI-Bank.
+            </Text>
+            <View style={s.infoBox}>
+              <Text style={s.infoText}>
+                Para crear tu cuenta, acércate a cualquier sucursal AI-Bank con tu
+                cédula de identidad. Un asesor te ayudará a activar tu cuenta y
+                acceder a todos los beneficios del programa mAiles.
               </Text>
-
-              <Text style={s.sectionTitle}>Correos de Prueba Disponibles:</Text>
-
-              {EMAILS_PRUEBA.map((email, idx) => (
-                <View key={idx} style={s.emailCard}>
-                  <Text style={s.emailText}>{email}</Text>
-                </View>
-              ))}
-
-              <TouchableOpacity style={s.btnPrimary} onPress={handleReset}>
-                <Text style={s.btnPrimaryText}>Intentar de Nuevo</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text style={s.welcomeMessage}>
-                ✓ Bienvenido al Sistema de Pruebas
-              </Text>
-
-              <Text style={s.sectionTitle}>
-                Correos Disponibles para Pruebas:
-              </Text>
-
-              {EMAILS_PRUEBA.map((email, idx) => (
-                <View key={idx} style={s.emailCard}>
-                  <Text style={s.emailText}>{email}</Text>
-                </View>
-              ))}
-            </>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+            </View>
+            <TouchableOpacity style={s.btnPrimary} onPress={handleReset}>
+              <Text style={s.btnPrimaryText}>← Intentar de nuevo</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
   );
 }
 
@@ -509,5 +481,33 @@ const s = StyleSheet.create({
     fontSize: 10,
     textAlign: "center",
     marginTop: 32,
-  },
+    },
+    errorIcon: {
+    fontSize: 48,
+    textAlign: 'center',
+    marginBottom: 12,
+    },
+    errorTitle: {
+      color: '#d7e3fc',
+      fontSize: 20,
+      fontWeight: '800',
+      textAlign: 'center',
+      marginBottom: 10,
+    },
+    infoBox: {
+      backgroundColor: '#030e20',
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 24,
+      borderLeftWidth: 3,
+      borderLeftColor: '#b2c5ff',
+      borderWidth: 0.5,
+      borderColor: 'rgba(178,197,255,0.15)',
+    },
+    infoText: {
+      color: '#b2c5ff',
+      fontSize: 13,
+      lineHeight: 22,
+      fontWeight: '500',
+    },
 });
