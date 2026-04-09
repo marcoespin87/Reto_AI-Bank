@@ -24,6 +24,7 @@ export default function GrupoScreen() {
   const [userMailes, setUserMailes] = useState(0);
   const [gruposMatch, setGruposMatch] = useState<any[]>([]);
   const [modalResultadoMatch, setModalResultadoMatch] = useState(false);
+  const [posicionEnLiga, setPosicionEnLiga] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -93,6 +94,25 @@ export default function GrupoScreen() {
         .eq("group_id", grupoData.id);
 
       if (progData) setProgresos(progData);
+
+      // Calcular posición en liga
+      const { data: todosGrupos } = await supabase
+        .from('groups')
+        .select(`id, group_members!inner(estado, users(mailes_acumulados))`)
+        .eq('liga_id', grupoData.liga_id);
+
+      if (todosGrupos) {
+        const ranking = todosGrupos
+          .map((g: any) => {
+            const activos = g.group_members?.filter((m: any) => m.estado === 'activo') || [];
+            const total = activos.reduce((sum: number, m: any) =>
+              sum + (m.users?.mailes_acumulados || 0), 0);
+            return { id: g.id, total };
+          })
+          .sort((a: any, b: any) => b.total - a.total);
+        const pos = ranking.findIndex((g: any) => g.id === grupoData.id) + 1;
+        setPosicionEnLiga(pos);
+      }
     }
   }
 
@@ -462,6 +482,7 @@ export default function GrupoScreen() {
       onAprobarMiembro={aprobarMiembro}
       onRechazarMiembro={rechazarMiembro}
       onRenombrarGrupo={renombrarGrupo}
+      posicionEnLiga={posicionEnLiga}
     />
   );
 }

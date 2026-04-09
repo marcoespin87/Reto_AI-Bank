@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import BottomNav from "./BottomNav";
+import RankingLiga from './RankingLiga';
 
 interface GrupoViewProps {
   userId: number | null;
@@ -30,6 +31,7 @@ interface GrupoViewProps {
   nombreGrupo: string;
   codigoInput: string;
   gruposMatch: any[];
+  posicionEnLiga: number | null;
   onRefresh: () => void;
   setModalCrear: (v: boolean) => void;
   setModalUnirse: (v: boolean) => void;
@@ -81,6 +83,7 @@ export default function GrupoView({
   onAprobarMiembro,
   onRechazarMiembro,
   onRenombrarGrupo,
+  posicionEnLiga,
 }: GrupoViewProps) {
   const { colors } = useTheme();
 
@@ -156,7 +159,9 @@ export default function GrupoView({
                   <View style={s.groupBadge}>
                     <Text style={s.groupBadgeText}>LIGA PLATA</Text>
                   </View>
-                  <Text style={s.groupRank}>#2 en liga</Text>
+                  <Text style={s.groupRank}>
+                    {posicionEnLiga ? `#${posicionEnLiga} en liga` : '— en liga'}
+                  </Text>
                 </View>
               </View>
               <View style={s.headerBtns}>
@@ -337,6 +342,10 @@ export default function GrupoView({
                 );
               })}
             </View>
+            <RankingLiga
+              grupoActualId={grupo?.id ?? null}
+              ligaId={grupo?.liga_id ?? 8}
+            />
           </View>
         )}
 
