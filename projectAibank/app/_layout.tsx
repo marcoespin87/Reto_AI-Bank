@@ -1,6 +1,7 @@
 import * as Linking from "expo-linking";
 import { Stack, router } from "expo-router";
 import { useEffect } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
 import { TutorialProvider } from '../context/TutorialContext';
@@ -58,13 +59,15 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <TutorialProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-      </TutorialProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <TutorialProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </TutorialProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

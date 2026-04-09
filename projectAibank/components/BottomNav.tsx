@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 
 type Tab = "home" | "banco" | "mundial" | "grupo" | "perfil";
@@ -55,6 +56,7 @@ const TABS: {
 
 export default function BottomNav({ active }: BottomNavProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const s = getStyles(colors);
 
   const handleNavigation = (tab: (typeof TABS)[0]) => {
@@ -68,7 +70,7 @@ export default function BottomNav({ active }: BottomNavProps) {
   };
 
   return (
-    <View style={s.bottomNav}>
+    <View style={[s.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       {TABS.map((tab) => {
         const isActive = tab.key === active;
         const isMundial = tab.key === "mundial";

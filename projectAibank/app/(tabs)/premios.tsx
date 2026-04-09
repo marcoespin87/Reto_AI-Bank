@@ -4,13 +4,13 @@ import { useEffect } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNav from "../../components/BottomNav";
 import { useTheme } from "../../context/ThemeContext";
 import { usePremios } from "../../hooks/usePremios";

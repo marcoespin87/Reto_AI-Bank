@@ -4,13 +4,13 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import BottomNav from "./BottomNav";
 import ChatbotModal from "./ChatbotModal";
@@ -100,6 +100,11 @@ export default function MundialUI({
   onCloseChatbot,
 }: MundialUIProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  // BottomNav height ≈ 60px (paddingVertical + icon + label) + safe area bottom
+  const navHeight = 60 + insets.bottom;
+  // FAB sits just above BottomNav
+  const fabBottom = navHeight + 14;
 
   const FORMA_COLOR: Record<"G" | "E" | "P", string> = {
     G: colors.formaWin,
@@ -350,7 +355,7 @@ export default function MundialUI({
 
         {/* Sticky Bottom: Predicción */}
         {mostrarPrediccion && (
-          <View style={s.stickyBottom}>
+          <View style={[s.stickyBottom, { bottom: navHeight }]}>
             <TouchableOpacity onPress={onClosePredecir} style={s.closeBtn}>
               <Text style={s.closeBtnText}>✕</Text>
             </TouchableOpacity>
@@ -465,9 +470,12 @@ export default function MundialUI({
         )}
       </KeyboardAvoidingView>
 
-      {/* FAB Chatbot */}
+      {/* FAB Chatbot — positioned above BottomNav using safe area insets */}
       {!mostrarPrediccion && (
-        <TouchableOpacity style={s.chatFab} onPress={onOpenChatbot}>
+        <TouchableOpacity
+          style={[s.chatFab, { bottom: fabBottom }]}
+          onPress={onOpenChatbot}
+        >
           <Text style={s.chatFabIcon}>🤖</Text>
         </TouchableOpacity>
       )}

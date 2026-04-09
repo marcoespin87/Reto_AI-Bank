@@ -1,7 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Animated,
+  Dimensions,
+  Keyboard,
   Modal,
   Platform,
   ScrollView,
@@ -33,7 +35,66 @@ export default function ChatbotModal({ visible, onClose }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
+  const screenHeight = Dimensions.get("window").height;
+
+  // Track keyboard to push the sheet above it
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const kbHeight = e.endCoordinates.height;
+      setKeyboardVisible(true);
+      setKeyboardHeight(kbHeight);
+      if (Platform.OS === "ios") {
+        Animated.timing(keyboardOffset, {
+          toValue: kbHeight,
+          duration: e.duration ?? 250,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        keyboardOffset.setValue(kbHeight);
+      }
+      setTimeout(
+        () => scrollRef.current?.scrollToEnd({ animated: true }),
+        100
+      );
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, (e) => {
+      setKeyboardVisible(false);
+      setKeyboardHeight(0);
+      if (Platform.OS === "ios") {
+        Animated.timing(keyboardOffset, {
+          toValue: 0,
+          duration: e.duration ?? 250,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        keyboardOffset.setValue(0);
+      }
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Reset keyboard state when modal closes
+  useEffect(() => {
+    if (!visible) {
+      keyboardOffset.setValue(0);
+      setKeyboardVisible(false);
+      setKeyboardHeight(0);
+    }
+  }, [visible]);
 
   async function sendMessage() {
     if (!input.trim() || loading) return;
@@ -76,10 +137,16 @@ export default function ChatbotModal({ visible, onClose }: Props) {
       onRequestClose={onClose}
     >
       <View style={s.overlay}>
-        <KeyboardAvoidingView
-          style={s.sheet}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={0}
+        <Animated.View
+          style={[
+            s.sheet,
+            {
+              marginBottom: keyboardOffset,
+              maxHeight: keyboardVisible
+                ? screenHeight - keyboardHeight - 20
+                : screenHeight * 0.88,
+            },
+          ]}
         >
           {/* Header */}
           <View style={s.header}>
@@ -108,6 +175,7 @@ export default function ChatbotModal({ visible, onClose }: Props) {
             style={s.messages}
             contentContainerStyle={s.messagesContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             onContentSizeChange={() =>
               scrollRef.current?.scrollToEnd({ animated: true })
             }
@@ -144,7 +212,18 @@ export default function ChatbotModal({ visible, onClose }: Props) {
           </ScrollView>
 
           {/* Input */}
-          <View style={s.inputRow}>
+          <View
+            style={[
+              s.inputRow,
+              {
+                paddingBottom: keyboardVisible
+                  ? 10
+                  : Platform.OS === "ios"
+                    ? 28
+                    : 16,
+              },
+            ]}
+          >
             <TextInput
               style={s.input}
               placeholder="Pregunta al AI Coach..."
@@ -167,7 +246,7 @@ export default function ChatbotModal({ visible, onClose }: Props) {
               )}
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -183,7 +262,6 @@ const s = StyleSheet.create({
     backgroundColor: "#0d1b2e",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: "88%",
     borderTopWidth: 0.5,
     borderColor: "#1f2a3d",
   },
@@ -296,7 +374,7 @@ const s = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: Platform.OS === "ios" ? 28 : 16,
+    paddingBottom: 16,
     borderTopWidth: 0.5,
     borderTopColor: "#1f2a3d",
   },

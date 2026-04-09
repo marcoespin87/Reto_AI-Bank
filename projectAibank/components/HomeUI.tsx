@@ -3,13 +3,13 @@ import { router } from "expo-router";
 import {
   Image,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import BottomNav from "./BottomNav";
 import ProgressToggleCard, { ProgressData } from "./ProgressToggleCard";
@@ -145,7 +145,6 @@ export default function HomeUI({
               <Text style={s.cardNumber}>
                 {formatNumeroCuenta(numeroCuenta)}
               </Text>
-              <Text style={s.cardCopyHint}>Toca para copiar 📋</Text>
             </TouchableOpacity>
             <View style={s.cardChip}>
               <View style={s.chipCircle1} />
@@ -355,7 +354,6 @@ function getStyles(
       marginBottom: 16,
       overflow: "hidden",
       position: "relative",
-      aspectRatio: 1.6,
       shadowColor: colors.shadowColorBlue,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 1,

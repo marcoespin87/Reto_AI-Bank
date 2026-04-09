@@ -1,7 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Animated,
+    Keyboard,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -96,6 +100,48 @@ export default function BancoUI({
   const { colors } = useTheme();
   const s = getStyles(colors);
 
+  // Keyboard handling for transaction modals
+  const modalKeyboardOffset = useRef(new Animated.Value(0)).current;
+  const [modalKeyboardVisible, setModalKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setModalKeyboardVisible(true);
+      if (Platform.OS === "ios") {
+        Animated.timing(modalKeyboardOffset, {
+          toValue: e.endCoordinates.height,
+          duration: e.duration ?? 250,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        modalKeyboardOffset.setValue(e.endCoordinates.height);
+      }
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, (e) => {
+      setModalKeyboardVisible(false);
+      if (Platform.OS === "ios") {
+        Animated.timing(modalKeyboardOffset, {
+          toValue: 0,
+          duration: e.duration ?? 250,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        modalKeyboardOffset.setValue(0);
+      }
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   return (
     <SafeAreaView style={s.root}>
       <ScrollView
@@ -149,7 +195,6 @@ export default function BancoUI({
               <Text style={s.cardNumber}>
                 {formatNumeroCuenta(numeroCuenta)}
               </Text>
-              <Text style={s.cardCopyHint}>Toca para copiar 📋</Text>
             </TouchableOpacity>
             <View style={s.cardChip}>
               <View style={s.chipCircle1} />
@@ -261,7 +306,9 @@ export default function BancoUI({
       {/* Transaction Modal */}
       <Modal visible={modal !== null} transparent animationType="slide">
         <View style={s.modalOverlay}>
-          <View style={s.modalCard}>
+          <Animated.View
+            style={[s.modalCard, { marginBottom: modalKeyboardOffset }]}
+          >
             {modal && (
               <View key={`modal-content-${modal}`}>
                 <Text style={s.modalTitle}>
@@ -325,7 +372,7 @@ export default function BancoUI({
                 </TouchableOpacity>
               </View>
             )}
-          </View>
+          </Animated.View>
         </View>
       </Modal>
 

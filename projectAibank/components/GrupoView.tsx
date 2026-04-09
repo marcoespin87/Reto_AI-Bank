@@ -506,9 +506,6 @@ export default function GrupoView({
                       </View>
                     </View>
                   </View>
-                  <Text style={s.memberMailes}>
-                    {(m.users?.mailes_acumulados || 0).toLocaleString()} mA
-                  </Text>
                 </View>
               ))}
 
@@ -1258,7 +1255,7 @@ function getStyles(
       borderRadius: 12,
       paddingHorizontal: 8,
     },
-    memberLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+    memberLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
     rankNumber: {
       color: colors.textSecondary,
       fontSize: 16,
