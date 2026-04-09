@@ -4,6 +4,7 @@ import {
   Modal, Animated, Dimensions, Image, ScrollView
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -27,7 +28,7 @@ const PASOS = [
   { titulo: 'Predice los partidos',           boton: 'Ver el chatbot →'    },
   { titulo: 'Tu AI Coach',                    boton: 'Ver grupos →'        },
   { titulo: 'Únete a un equipo',              boton: 'Ver premios →'       },
-  { titulo: 'Tu premio de temporada',         boton: '¡Empezar ahora! 🚀'  },
+  { titulo: 'Tu premio de temporada',         boton: '¡Empezar ahora!'  },
 ];
 
 export default function TutorialInteractivo({ visible, onCompletar, pasoInicial = 0, userName = 'Usuario' }: Props) {
@@ -39,10 +40,28 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
   const mailesAnim = useRef(new Animated.Value(0)).current;
   const cromoScale = useRef(new Animated.Value(0.3)).current;
   const cromoOpac  = useRef(new Animated.Value(0)).current;
+  const [cromoImgUrl, setCromoImgUrl] = useState('https://picsum.photos/seed/valencia/400/530');
 
   useEffect(() => {
     if (visible) { setPaso(pasoInicial); animar(); }
   }, [visible, pasoInicial]);
+
+  useEffect(() => {
+    async function fetchImagenCromo() {
+      const { data, error } = await supabase
+        .from('stickers')
+        .select('imagen_url')
+        .eq('rareza', 'epico')
+        .limit(1)
+        .single();
+
+      if (data && data.imagen_url) {
+        setCromoImgUrl(data.imagen_url);
+      }
+    }
+    
+    fetchImagenCromo();
+  }, []);
 
   useEffect(() => {
     animar();
@@ -133,7 +152,7 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                   {[
                     { icon: '⭐', titulo: 'Gana mAiles',      desc: 'Con cada pago que hagas' },
                     { icon: '🃏', titulo: 'Colecciona cromos', desc: 'Cada $20 = 1 cromo' },
-                    { icon: '⚽', titulo: 'Predice partidos',  desc: 'Gana hasta 1,000 mAiles' },
+                    { icon: '⚽', titulo: 'Predice partidos',  desc: 'Gana mAiles' },
                     { icon: '👥', titulo: 'Juega en equipo',   desc: 'Forma grupos y compite' },
                   ].map((item, i) => (
                     <View key={i} style={[s.resumenItem, { backgroundColor: colors.cardBackground, borderColor: colors.borderMedium }]}>
@@ -142,6 +161,11 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                       <Text style={[s.resumenDesc, { color: colors.textSecondary }]}>{item.desc}</Text>
                     </View>
                   ))}
+                </View>
+                <View style={[s.infoBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
+                  <Text style={[s.infoText, { color: colors.primary }]}>
+                    💡 ¿Cómo funciona? Usa tu tarjeta AI-Bank para pagos diarios y el sistema te recompensará automáticamente con mAiles y cromos del Mundial 2026.
+                  </Text>
                 </View>
               </View>
             )}
@@ -181,12 +205,17 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                   </View>
                   <View style={[s.previewMailes, { backgroundColor: colors.goldDim }]}>
                     <Text style={[s.previewMailesText, { color: colors.gold }]}>
-                      ⭐ Ganarás {MAILES_DEMO} mAiles  •  🃏 {CROMOS_DEMO} cromos
+                      ⭐ Ganarás {MAILES_DEMO} mAiles  y  🃏 {CROMOS_DEMO} cromos
                     </Text>
                   </View>
                   <View style={[s.btnSimulado, { backgroundColor: colors.gold, opacity: 0.8 }]}>
                     <Text style={[s.btnSimuladoText, { color: colors.textOnGold }]}>Confirmar ✦</Text>
                   </View>
+                </View>
+                <View style={[s.infoBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
+                  <Text style={[s.infoText, { color: colors.primary }]}>
+                    💡 ¿Cómo funciona? Ve a la sección de Banco, toca Pagar o Compra, ingresa el monto y confirma. Cuanto más gastes, más mAiles y cromos acumulas.
+                  </Text>
                 </View>
               </View>
             )}
@@ -194,7 +223,7 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
             {/* ── PASO 2: mAiles ── */}
             {paso === 2 && (
               <View style={s.contenido}>
-                <UbicacionChip icono="🏦" texto="Banco → cada pago genera mAiles automáticamente" />
+                <UbicacionChip icono="🏦" texto="Banco → cada pago genera mAiles." />
 
                 <Animated.View style={[
                   s.mailesContainer,
@@ -209,7 +238,7 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                 <View style={[s.detalleBox, { backgroundColor: colors.cardBackground, borderColor: colors.borderMedium }]}>
                   {[
                     { key: 'Monto pagado',   val: `$${MONTO_DEMO}.00`,       vc: colors.textPrimary },
-                    { key: 'Tasa mAiles',    val: '×2 por cada $100',        vc: colors.primary     },
+                    { key: 'Tasa mAiles',    val: '10 mAiles por cada $100',        vc: colors.primary     },
                     { key: 'Cromos ganados', val: `${CROMOS_DEMO} cromos 🃏`, vc: colors.primary     },
                   ].map((row, i) => (
                     <View key={i} style={[s.detalleRow, i > 0 && { borderTopWidth: 0.5, borderTopColor: colors.borderMedium }]}>
@@ -217,10 +246,11 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                       <Text style={[s.detalleVal, { color: row.vc }]}>{row.val}</Text>
                     </View>
                   ))}
-                  <View style={[s.detalleRow, { borderTopWidth: 1, borderTopColor: colors.borderStrong }]}>
-                    <Text style={[s.detalleKey, { color: colors.textPrimary, fontWeight: '800' }]}>Total mAiles</Text>
-                    <Text style={[s.detalleVal, { color: colors.gold, fontSize: 15 }]}>+{MAILES_DEMO} ⭐</Text>
-                  </View>
+                </View>
+                <View style={[s.infoBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
+                  <Text style={[s.infoText, { color: colors.primary }]}>
+                    💡 ¿Cómo funciona? Cada $100 gastados = 10 mAiles. Acumula mAiles para subir de medalla.
+                  </Text>
                 </View>
               </View>
             )}
@@ -228,7 +258,7 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
             {/* ── PASO 3: Cromo ── */}
             {paso === 3 && (
               <View style={s.contenido}>
-                <UbicacionChip icono="🏦" texto="Banco → paga $20 o más → cromo automático" />
+                <UbicacionChip icono="🏦" texto="Banco → por cada $20 que gastes gana 1 cromo" />
 
                 <Text style={[s.cromosGanados, { color: colors.textSecondary }]}>
                   ${MONTO_DEMO} ÷ $20 = {CROMOS_DEMO} cromos ganados
@@ -240,13 +270,9 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                   { transform: [{ scale: cromoScale }], opacity: cromoOpac },
                 ]}>
                   <Image
-                    source={{ uri: 'https://picsum.photos/seed/valencia/400/530' }}
+                    source={{ uri: cromoImgUrl }}
                     style={s.cromoImg} resizeMode="cover"
                   />
-                  <View style={[s.cromoRarezaBadge, { backgroundColor: colors.rarityEpicBg }]}>
-                    <Text style={[s.cromoRarezaText, { color: colors.rarityEpicText }]}>ÉPICO</Text>
-                  </View>
-                  <Text style={[s.cromoNombre, { color: colors.rarityEpicText }]}>Enner Valencia</Text>
                 </Animated.View>
 
                 <View style={s.rarezaRow}>
@@ -260,6 +286,11 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                       <Text style={[s.rarezaPct, { color: colors.textMuted }]}>{r.pct}</Text>
                     </View>
                   ))}
+                </View>
+                <View style={[s.infoBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
+                  <Text style={[s.infoText, { color: colors.primary }]}>
+                    💡 ¿Cómo funciona? Cada $20 gastados = 1 cromo aleatorio. Al confirmar el pago aparece un sobre animado, tócalo para revelar qué jugador obtuviste.
+                  </Text>
                 </View>
               </View>
             )}
@@ -284,7 +315,10 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
 
                 <View style={s.albumGrid}>
                   <View style={[s.albumCromoCard, { borderColor: colors.rarityEpicBorder, backgroundColor: colors.rarityEpicBg }]}>
-                    <Image source={{ uri: 'https://picsum.photos/seed/valencia/400/530' }} style={s.albumCromoImg} resizeMode="cover" />
+                    <Image 
+                      source={{ uri: cromoImgUrl }} 
+                      style={s.albumCromoImg} resizeMode="cover" 
+                    />
                     <View style={[s.albumCromoBadge, { backgroundColor: colors.rarityEpicBg }]}>
                       <Text style={[s.albumCromoBadgeText, { color: colors.rarityEpicText }]}>ÉPICO</Text>
                     </View>
@@ -305,17 +339,22 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                     </Text>
                   </View>
                 </View>
+                <View style={[s.infoBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
+                  <Text style={[s.infoText, { color: colors.primary }]}>
+                    💡 ¿Cómo funciona? Accede desde Inicio → Ver álbum. Colecciona los 28 cromos para completar el álbum y entrar al sorteo con vuelo, hotel y experiencias VIP del Mundial 2026.
+                  </Text>
+                </View>
               </View>
             )}
 
             {/* ── PASO 5: Predicciones ── */}
             {paso === 5 && (
               <View style={s.contenido}>
-                <UbicacionChip icono="⚽" texto="Tab Mundial en el menú inferior (botón central)" />
+                <UbicacionChip icono="⚽" texto="Mundial en el menú inferior (botón central)" />
 
                 <View style={[s.partidoCard, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
                   <View style={[s.countdownChip, { backgroundColor: colors.errorDim, borderColor: colors.error }]}>
-                    <Text style={[s.countdownText, { color: colors.error }]}>⏱ Predicción cierra en 2h 48m</Text>
+                    <Text style={[s.countdownText, { color: colors.error }]}>⏱ Predicción cierra en 1h 10m</Text>
                   </View>
                   <View style={s.teamsRow}>
                     <View style={s.teamCol}>
@@ -323,7 +362,6 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                         <Text style={s.flagEmoji}>🇪🇨</Text>
                       </View>
                       <Text style={[s.teamName, { color: colors.textPrimary }]}>Ecuador</Text>
-                      <Text style={[s.teamRanking, { color: colors.textSecondary }]}>FIFA #41</Text>
                     </View>
                     <Text style={[s.vsText, { color: colors.textMuted }]}>VS</Text>
                     <View style={s.teamCol}>
@@ -331,7 +369,6 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                         <Text style={s.flagEmoji}>🇨🇮</Text>
                       </View>
                       <Text style={[s.teamName, { color: colors.textPrimary }]}>C. de Marfil</Text>
-                      <Text style={[s.teamRanking, { color: colors.textSecondary }]}>FIFA #52</Text>
                     </View>
                   </View>
                 </View>
@@ -358,18 +395,15 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                     </View>
                   </View>
                 </View>
-
-                <View style={[s.rewardsCard, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
-                  {[
-                    { label: 'Marcador exacto',  val: '+1,000 mAiles', color: colors.gold    },
-                    { label: 'Ganador correcto', val: '+300 mAiles',   color: colors.primary },
-                  ].map((r, i) => (
-                    <View key={i} style={[s.rewardRow, i > 0 && { borderTopWidth: 0.5, borderTopColor: colors.borderMedium }]}>
-                      <Text style={[s.rewardLabel, { color: colors.textSecondary }]}>{r.label}</Text>
-                      <Text style={[s.rewardVal, { color: r.color }]}>{r.val}</Text>
-                    </View>
-                  ))}
+                <View style={[s.btnSimulado, { backgroundColor: colors.gold, marginTop: 4 }]}>
+                    <Text style={[s.btnSimuladoText, { color: colors.textOnGold }]}>Predecir resultado ✦</Text>
                 </View>
+                <View style={[s.infoBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
+                  <Text style={[s.infoText, { color: colors.primary }]}>
+                    💡 ¿Cómo funciona? Ajusta el marcador de cada equipo usando los botones de + y −. Si aciertas que equipo ganará el partido, ¡ganarás mAiles!
+                  </Text>
+                </View>
+
               </View>
             )}
 
@@ -379,14 +413,6 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                 <UbicacionChip icono="⚽" texto="Mundial → botón 🤖 flotante (esquina inferior derecha)" />
 
                 <View style={[s.chatbotDemo, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
-                  {/* Mensaje bot */}
-                  <View style={s.chatMsgBot}>
-                    <View style={[s.chatBubbleBot, { backgroundColor: colors.cardBackground }]}>
-                      <Text style={[s.chatBubbleText, { color: colors.textPrimary }]}>
-                        ¡Hola! Soy tu AI Coach ⚽. Pregúntame sobre el partido Ecuador vs Costa de Marfil.
-                      </Text>
-                    </View>
-                  </View>
                   {/* Mensaje usuario */}
                   <View style={s.chatMsgUser}>
                     <View style={[s.chatBubbleUser, { backgroundColor: colors.primary }]}>
@@ -399,7 +425,7 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                   <View style={s.chatMsgBot}>
                     <View style={[s.chatBubbleBot, { backgroundColor: colors.cardBackground }]}>
                       <Text style={[s.chatBubbleText, { color: colors.textPrimary }]}>
-                        Ecuador viene de 3 victorias consecutivas 🔥. Ranking FIFA #41. Enner Valencia con 5 goles mundialistas. Recomiendo predecir victoria local 1-0 ⚽
+                        Ecuador viene de 3 victorias consecutivas . Ranking FIFA #41. Enner Valencia con 5 goles mundialistas.
                       </Text>
                     </View>
                   </View>
@@ -407,7 +433,7 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
 
                 <View style={[s.infoBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
                   <Text style={[s.infoText, { color: colors.primary }]}>
-                    💡 El AI Coach usa datos reales del partido: forma reciente, ranking FIFA, H2H y jugadores clave para darte la mejor recomendación
+                    💡 ¿Cómo usarlo? Abre el chat. Pregunta por un partido. Recibe estadísticas clave que te servirán para armar tu propia predicción
                   </Text>
                 </View>
 
@@ -430,7 +456,7 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                   {[
                     { icon: '➕', label: 'Crear grupo',             sub: 'Nombra tu equipo → comparte el código',      bg: colors.primaryDim,  border: colors.primary  },
                     { icon: '🔑', label: 'Unirse con código',       sub: 'Ingresa el código de 6 letras de tu amigo',  bg: colors.cardBackground, border: colors.borderStrong },
-                    { icon: '🎯', label: 'Matchmaking automático',  sub: 'Te emparejamos con usuarios de ±500 mAiles', bg: colors.goldDim,     border: colors.goldBorder   },
+                    { icon: '🎯', label: 'Matchmaking automático',  sub: 'Te emparejamos con usuarios con gastos similares', bg: colors.goldDim,     border: colors.goldBorder   },
                   ].map((opt, i) => (
                     <View key={i} style={[s.grupoOpcion, { backgroundColor: opt.bg, borderColor: opt.border }]}>
                       <Text style={s.grupoOpcionIcon}>{opt.icon}</Text>
@@ -466,9 +492,9 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
 
                 <View style={[s.premioFinalCard, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
                   <Text style={s.premioFinalEmoji}>🏆</Text>
-                  <Text style={[s.premioFinalTitulo, { color: colors.textPrimary }]}>Premio personalizado por IA</Text>
+                  <Text style={[s.premioFinalTitulo, { color: colors.textPrimary }]}>Premio personalizado</Text>
                   <Text style={[s.premioFinalDesc, { color: colors.textSecondary }]}>
-                    Al final de la temporada, nuestro modelo de IA analiza tu perfil de gasto y te asigna el premio que más se adapta a ti.
+                    Al final de la temporada se te asigna el premio que más se adapta a ti.
                   </Text>
                 </View>
 
@@ -487,12 +513,6 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
                       </View>
                     </View>
                   ))}
-                </View>
-
-                <View style={[s.infoBox, { backgroundColor: colors.goldDim, borderColor: colors.goldBorder }]}>
-                  <Text style={[s.infoText, { color: colors.gold }]}>
-                    🏅 Acumula mAiles para mejorar tu premio de temporada
-                  </Text>
                 </View>
               </View>
             )}
@@ -530,158 +550,157 @@ const s = StyleSheet.create({
   pills: { flexDirection: 'row', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, marginBottom: 10 },
   pill: { height: 5, width: 5, borderRadius: 3 },
   card: { borderRadius: 28, padding: 18, width: '100%', borderWidth: 0.5, maxHeight: '88%' },
-  saltarX: { position: 'absolute', top: 14, right: 14, zIndex: 10, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  saltarXText: { fontSize: 13, fontWeight: '700' },
+  saltarX: { position: 'absolute', top: 14, right: 14, zIndex: 10, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  saltarXText: { fontSize: 15, fontWeight: '700' },
   pasoHeader: { marginBottom: 12, paddingRight: 36 },
-  pasoTitulo: { fontSize: 18, fontWeight: '800' },
-  contenido: { gap: 10, marginBottom: 12 },
+  pasoTitulo: { fontSize: 22, fontWeight: '800' },
+  contenido: { gap: 12, marginBottom: 12 },
 
   // Chip ubicación
-  ubicacionChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, alignSelf: 'flex-start' },
-  ubicacionChipIcon: { fontSize: 14 },
-  ubicacionChipText: { fontSize: 11, fontWeight: '700' },
+  ubicacionChip: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, alignSelf: 'flex-start' , width: '100%'},
+  ubicacionChipIcon: { fontSize: 16 },
+  ubicacionChipText: { fontSize: 13, fontWeight: '700', flexShrink: 1},
 
   // Paso 0 - bienvenida
-  welcomeCard: { borderRadius: 18, padding: 18, borderWidth: 1, alignItems: 'center', gap: 8 },
-  welcomeEmoji: { fontSize: 36 },
-  welcomeTitulo: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  welcomeDesc: { fontSize: 13, lineHeight: 20, textAlign: 'center' },
-  resumenGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  resumenItem: { width: '48%', borderRadius: 12, padding: 12, borderWidth: 0.5, margin: '1%', alignItems: 'center', gap: 4 },
-  resumenIcon: { fontSize: 24 },
-  resumenTitulo: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  resumenDesc: { fontSize: 10, textAlign: 'center' },
+  welcomeCard: { borderRadius: 18, padding: 20, borderWidth: 1, alignItems: 'center', gap: 8 },
+  welcomeTitulo: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  welcomeDesc: { fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
+  resumenItem: { width: '48%', borderRadius: 12, padding: 14, borderWidth: 0.5, alignItems: 'center', gap: 6 },
+  resumenIcon: { fontSize: 28 },
+  resumenTitulo: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  resumenDesc: { fontSize: 14, lineHeight: 18, textAlign: 'center' },
 
   // Paso 1
-  miniCard: { borderRadius: 16, padding: 14, overflow: 'hidden', position: 'relative' },
+  miniCard: { borderRadius: 16, padding: 16, overflow: 'hidden', position: 'relative' },
   miniCardPatternCircle: { position: 'absolute', top: -20, right: -20, width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.12)' },
-  miniCardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  miniCardLabel: { color: '#002b73', fontSize: 10, fontWeight: '700' },
-  miniCardBrand: { color: '#002b73', fontSize: 13, fontWeight: '900', fontStyle: 'italic' },
-  miniSaldo: { color: 'rgba(0,43,115,0.6)', fontSize: 9 },
-  miniBalance: { color: '#002b73', fontSize: 20, fontWeight: '800', marginBottom: 4 },
-  miniCuenta: { color: 'rgba(0,43,115,0.65)', fontFamily: 'monospace', fontSize: 9, letterSpacing: 2 },
-  accionesRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
-  accionItem: { flex: 1, borderRadius: 10, padding: 8, borderWidth: 1, alignItems: 'center', gap: 3 },
-  accionIcon: { fontSize: 18 },
-  accionLabel: { fontSize: 9, fontWeight: '600' },
-  modalSimulado: { borderRadius: 16, padding: 12, gap: 6, borderWidth: 0.5 },
-  modalSimuladoTitle: { fontSize: 14, fontWeight: '800', marginBottom: 2 },
-  inputLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 1.5 },
-  inputFake: { borderRadius: 10, padding: 10, borderWidth: 0.5, marginBottom: 4 },
-  inputFakeVal: { fontSize: 13 },
-  previewMailes: { borderRadius: 8, padding: 7, alignItems: 'center' },
-  previewMailesText: { fontSize: 11, fontWeight: '700' },
-  btnSimulado: { borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
-  btnSimuladoText: { fontWeight: '800', fontSize: 12 },
+  miniCardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  miniCardLabel: { color: '#002b73', fontSize: 12, fontWeight: '700' },
+  miniCardBrand: { color: '#002b73', fontSize: 15, fontWeight: '900', fontStyle: 'italic' },
+  miniSaldo: { color: 'rgba(0,43,115,0.6)', fontSize: 11 },
+  miniBalance: { color: '#002b73', fontSize: 24, fontWeight: '800', marginBottom: 4 },
+  miniCuenta: { color: 'rgba(0,43,115,0.65)', fontFamily: 'monospace', fontSize: 11, letterSpacing: 2 },
+  accionesRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  accionItem: { flex: 1, borderRadius: 10, padding: 10, borderWidth: 1, alignItems: 'center', gap: 4 },
+  accionIcon: { fontSize: 20 },
+  accionLabel: { fontSize: 11, fontWeight: '600' },
+  modalSimulado: { borderRadius: 16, padding: 14, gap: 8, borderWidth: 0.5 },
+  modalSimuladoTitle: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
+  inputLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
+  inputFake: { borderRadius: 10, padding: 12, borderWidth: 0.5, marginBottom: 4 },
+  inputFakeVal: { fontSize: 15 },
+  previewMailes: { borderRadius: 8, padding: 9, alignItems: 'center' },
+  previewMailesText: { fontSize: 13, fontWeight: '700' },
+  btnSimulado: { borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  btnSimuladoText: { fontWeight: '800', fontSize: 14 },
 
   // Paso 2
-  mailesContainer: { borderRadius: 16, borderWidth: 1, padding: 16, alignItems: 'center', gap: 3 },
-  mailesGanIcon: { fontSize: 36 },
-  mailesGanNum: { fontSize: 36, fontWeight: '900', letterSpacing: -1 },
-  mailesGanLabel: { fontSize: 12, fontWeight: '700' },
+  mailesContainer: { borderRadius: 16, borderWidth: 1, padding: 18, alignItems: 'center', gap: 4 },
+  mailesGanIcon: { fontSize: 40 },
+  mailesGanNum: { fontSize: 40, fontWeight: '900', letterSpacing: -1 },
+  mailesGanLabel: { fontSize: 14, fontWeight: '700' },
   detalleBox: { borderRadius: 12, borderWidth: 0.5, overflow: 'hidden' },
-  detalleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 },
-  detalleKey: { fontSize: 11 },
-  detalleVal: { fontSize: 12, fontWeight: '700' },
-  infoBox: { borderRadius: 10, padding: 10, borderWidth: 0.5 },
-  infoText: { fontSize: 11, lineHeight: 17, fontWeight: '600' },
+  detalleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12 },
+  detalleKey: { fontSize: 13 },
+  detalleVal: { fontSize: 14, fontWeight: '700' },
+  infoBox: { borderRadius: 10, padding: 12, borderWidth: 0.5 },
+  infoText: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
 
   // Paso 3
-  cromosGanados: { fontSize: 11, textAlign: 'center' },
-  cromoCard: { width: width * 0.35, aspectRatio: 3/4, borderRadius: 14, borderWidth: 2, overflow: 'hidden', alignSelf: 'center', position: 'relative' },
+  cromosGanados: { fontSize: 13, textAlign: 'center' },
+  cromoCard: { width: 140, aspectRatio: 3/4, borderRadius: 14, borderWidth: 2, overflow: 'hidden', alignSelf: 'center', position: 'relative' },
   cromoImg: { width: '100%', height: '100%' },
-  cromoRarezaBadge: { position: 'absolute', bottom: 20, left: 4, right: 4, paddingVertical: 2, borderRadius: 5, alignItems: 'center' },
-  cromoRarezaText: { fontSize: 7, fontWeight: '800', letterSpacing: 0.8 },
-  cromoNombre: { position: 'absolute', bottom: 4, left: 4, right: 4, fontSize: 9, fontWeight: '800', textAlign: 'center' },
+  cromoRarezaBadge: { position: 'absolute', bottom: 22, left: 4, right: 4, paddingVertical: 3, borderRadius: 5, alignItems: 'center' },
+  cromoRarezaText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
+  cromoNombre: { position: 'absolute', bottom: 4, left: 4, right: 4, fontSize: 11, fontWeight: '800', textAlign: 'center' },
   rarezaRow: { flexDirection: 'row', gap: 6, justifyContent: 'center' },
-  rarezaItem: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, alignItems: 'center', borderWidth: 0.5 },
-  rarezaLabel: { fontSize: 10, fontWeight: '700' },
-  rarezaPct: { fontSize: 9, marginTop: 1 },
+  rarezaItem: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', borderWidth: 0.5 },
+  rarezaLabel: { fontSize: 12, fontWeight: '700' },
+  rarezaPct: { fontSize: 11, marginTop: 1 },
 
   // Paso 4
-  albumProgress: { borderRadius: 12, padding: 12, gap: 6, borderWidth: 0.5 },
+  albumProgress: { borderRadius: 12, padding: 14, gap: 8, borderWidth: 0.5 },
   albumProgressHeader: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-  albumNum: { fontSize: 26, fontWeight: '800' },
-  albumTotal: { fontSize: 12 },
-  progressBar: { height: 7, borderRadius: 4, overflow: 'hidden' },
+  albumNum: { fontSize: 30, fontWeight: '800' },
+  albumTotal: { fontSize: 14 },
+  progressBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
-  albumSub: { fontSize: 10 },
-  albumGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'center' },
-  albumCromoCard: { width: (width-32-40-5*5)/6, aspectRatio: 3/4, borderRadius: 7, borderWidth: 1.5, overflow: 'hidden', position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  albumSub: { fontSize: 12 },
+  albumGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
+  albumCromoCard: { width: 45, aspectRatio: 3/4, borderRadius: 7, borderWidth: 1.5, overflow: 'hidden', position: 'relative', alignItems: 'center', justifyContent: 'center' },
   albumCromoImg: { width: '100%', height: '100%' },
   albumCromoBadge: { position: 'absolute', bottom: 1, left: 1, right: 1, paddingVertical: 1, borderRadius: 3, alignItems: 'center' },
-  albumCromoBadgeText: { fontSize: 5, fontWeight: '800' },
+  albumCromoBadgeText: { fontSize: 7, fontWeight: '800' },
   albumCromoLocked: { opacity: 0.3 },
-  albumLockText: { fontSize: 12, fontWeight: '800' },
-  premioBox: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 12, padding: 12 },
-  premioIcon: { fontSize: 24 },
+  albumLockText: { fontSize: 14, fontWeight: '800' },
+  premioBox: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 12, padding: 14 },
+  premioIcon: { fontSize: 28 },
   premioInfo: { flex: 1 },
-  premioTitulo: { fontSize: 12, fontWeight: '800' },
-  premioDesc: { fontSize: 10, marginTop: 2, lineHeight: 14 },
+  premioTitulo: { fontSize: 14, fontWeight: '800' },
+  premioDesc: { fontSize: 12, marginTop: 4, lineHeight: 16 },
 
   // Paso 5
-  partidoCard: { borderRadius: 14, padding: 12, borderWidth: 0.5, gap: 8 },
-  countdownChip: { alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 0.5 },
-  countdownText: { fontSize: 9, fontWeight: '700' },
+  partidoCard: { borderRadius: 14, padding: 14, borderWidth: 0.5, gap: 10 },
+  countdownChip: { alignSelf: 'flex-end', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 0.5 },
+  countdownText: { fontSize: 11, fontWeight: '700' },
   teamsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
-  teamCol: { alignItems: 'center', gap: 4 },
-  flagCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  flagEmoji: { fontSize: 30 },
-  teamName: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
-  teamRanking: { fontSize: 9 },
-  vsText: { fontSize: 12, fontWeight: '700' },
-  stepperCard: { borderRadius: 12, padding: 10, borderWidth: 0.5, gap: 6 },
-  stepperTitle: { fontSize: 8, fontWeight: '700', letterSpacing: 1.2 },
+  teamCol: { alignItems: 'center', gap: 6 },
+  flagCircle: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  flagEmoji: { fontSize: 34 },
+  teamName: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  teamRanking: { fontSize: 11 },
+  vsText: { fontSize: 14, fontWeight: '700' },
+  stepperCard: { borderRadius: 12, padding: 12, borderWidth: 0.5, gap: 8 },
+  stepperTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
   steppersRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
-  stepperCol: { alignItems: 'center', gap: 5 },
-  stepperFlag: { fontSize: 22 },
-  stepperBox: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 4 },
-  stepperBtn2: { fontSize: 18, fontWeight: '700', paddingHorizontal: 7 },
-  stepperValue: { fontSize: 20, fontWeight: '800', width: 30, textAlign: 'center' },
+  stepperCol: { alignItems: 'center', gap: 6 },
+  stepperFlag: { fontSize: 26 },
+  stepperBox: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 6 },
+  stepperBtn2: { fontSize: 22, fontWeight: '700', paddingHorizontal: 8 },
+  stepperValue: { fontSize: 24, fontWeight: '800', width: 34, textAlign: 'center' },
   stepperDash: { fontSize: 20, fontWeight: '200' },
   rewardsCard: { borderRadius: 10, borderWidth: 0.5, overflow: 'hidden' },
-  rewardRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 9 },
-  rewardLabel: { fontSize: 11 },
-  rewardVal: { fontSize: 11, fontWeight: '700' },
+  rewardRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 11 },
+  rewardLabel: { fontSize: 13 },
+  rewardVal: { fontSize: 13, fontWeight: '700' },
 
   // Paso 6 - chatbot
-  chatbotDemo: { borderRadius: 14, padding: 12, borderWidth: 0.5, gap: 8 },
+  chatbotDemo: { borderRadius: 14, padding: 14, borderWidth: 0.5, gap: 10 },
   chatMsgBot: { flexDirection: 'row', justifyContent: 'flex-start' },
   chatMsgUser: { flexDirection: 'row', justifyContent: 'flex-end' },
-  chatBubbleBot: { borderRadius: 14, borderBottomLeftRadius: 4, padding: 10, maxWidth: '85%' },
-  chatBubbleUser: { borderRadius: 14, borderBottomRightRadius: 4, padding: 10, maxWidth: '85%' },
-  chatBubbleText: { fontSize: 12, lineHeight: 17 },
-  fabRow: { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center' },
-  fabDesc: { fontSize: 12 },
-  fabSimulado: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  fabEmoji: { fontSize: 22 },
+  chatBubbleBot: { borderRadius: 14, borderBottomLeftRadius: 4, padding: 12, maxWidth: '85%' },
+  chatBubbleUser: { borderRadius: 14, borderBottomRightRadius: 4, padding: 12, maxWidth: '85%' },
+  chatBubbleText: { fontSize: 14, lineHeight: 20 },
+  fabRow: { flexDirection: 'row', alignItems: 'center', gap: 12, justifyContent: 'center' },
+  fabDesc: { fontSize: 14 },
+  fabSimulado: { width: 50, height: 50, borderRadius: 25, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  fabEmoji: { fontSize: 26 },
 
   // Paso 7 - grupos
-  grupoOpciones: { gap: 7 },
-  grupoOpcion: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, padding: 11, borderWidth: 0.5 },
-  grupoOpcionIcon: { fontSize: 20 },
+  grupoOpciones: { gap: 8 },
+  grupoOpcion: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, padding: 14, borderWidth: 0.5 },
+  grupoOpcionIcon: { fontSize: 24 },
   grupoOpcionInfo: { flex: 1 },
-  grupoOpcionLabel: { fontSize: 12, fontWeight: '700' },
-  grupoOpcionSub: { fontSize: 10, marginTop: 1 },
-  votacionCard: { borderRadius: 12, padding: 11, borderWidth: 0.5, gap: 7 },
-  votacionTitle: { fontSize: 12, fontWeight: '700' },
-  votacionDesc: { fontSize: 10, lineHeight: 15 },
-  votacionBtns: { flexDirection: 'row', gap: 8 },
-  votaBtn: { flex: 1, borderWidth: 1, borderRadius: 8, paddingVertical: 7, alignItems: 'center' },
-  votaBtnText: { fontSize: 11, fontWeight: '700' },
+  grupoOpcionLabel: { fontSize: 14, fontWeight: '700' },
+  grupoOpcionSub: { fontSize: 12, marginTop: 2 },
+  votacionCard: { borderRadius: 12, padding: 14, borderWidth: 0.5, gap: 8 },
+  votacionTitle: { fontSize: 14, fontWeight: '700' },
+  votacionDesc: { fontSize: 12, lineHeight: 18 },
+  votacionBtns: { flexDirection: 'row', gap: 10 },
+  votaBtn: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  votaBtnText: { fontSize: 13, fontWeight: '700' },
 
   // Paso 8 - premios
-  premioFinalCard: { borderRadius: 16, padding: 16, borderWidth: 0.5, alignItems: 'center', gap: 8 },
-  premioFinalEmoji: { fontSize: 48 },
-  premioFinalTitulo: { fontSize: 16, fontWeight: '800', textAlign: 'center' },
-  premioFinalDesc: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  premioFinalCard: { borderRadius: 16, padding: 20, borderWidth: 0.5, alignItems: 'center', gap: 10 },
+  premioFinalEmoji: { fontSize: 56 },
+  premioFinalTitulo: { fontSize: 20, fontWeight: '800', textAlign: 'center' },
+  premioFinalDesc: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   // Navegación
-  navRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
-  btnAnterior: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 0.5 },
-  btnAnteriorText: { fontSize: 13, fontWeight: '600' },
-  btnSiguiente: { paddingVertical: 13, borderRadius: 14, alignItems: 'center' },
-  btnSiguienteText: { fontWeight: '800', fontSize: 14 },
-  contador: { fontSize: 10, textAlign: 'center' },
+  navRow: { flexDirection: 'row', gap: 10, marginBottom: 8, marginTop: 8 },
+  btnAnterior: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 0.5 },
+  btnAnteriorText: { fontSize: 15, fontWeight: '600' },
+  btnSiguiente: { paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+  btnSiguienteText: { fontWeight: '800', fontSize: 16 },
+  contador: { fontSize: 12, textAlign: 'center' },
 });
