@@ -5,6 +5,7 @@ import { Alert } from "react-native";
 import HomeUI from "../../components/HomeUI";
 import { supabase } from "../../lib/supabase";
 import TutorialInteractivo from '../../components/TutorialInteractivo';
+import TutorialMenu from '../../components/TutorialMenu';
 import { useTutorial } from '../../hooks/useTutorial';
 
 export default function HomeScreen() {
@@ -15,7 +16,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [misStickersRecientes, setMisStickersRecientes] = useState<any[]>([]);
   const [numeroCuenta, setNumeroCuenta] = useState("");
-  const { mostrar, listo, completar } = useTutorial();
+  const { mostrar, listo, completar, verificarParaUsuario, mostrarMenu, setMostrarMenu } = useTutorial();
 
   useEffect(() => {
     loadUserData();
@@ -38,6 +39,8 @@ export default function HomeScreen() {
       setMailes(data.mailes_acumulados || 0);
       setSaldo(data.saldo || 0);
       setNumeroCuenta(data.numero_cuenta || "");
+      
+      await verificarParaUsuario(data.id);
 
       const { data: txs } = await supabase
         .from("transactions")
@@ -102,6 +105,10 @@ export default function HomeScreen() {
           userName={userName}
         />
       )}
+      <TutorialMenu 
+        visible={mostrarMenu} 
+        onClose={() => setMostrarMenu(false)} 
+      />
     </>
   );
 }

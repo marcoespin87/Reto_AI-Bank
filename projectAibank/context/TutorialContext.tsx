@@ -1,45 +1,63 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TUTORIAL_KEY = 'tutorial_v1';
-
 interface TutorialContextValue {
   mostrar: boolean;
   listo: boolean;
+  pasoInicial: number;
+  mostrarMenu: boolean;
   completar: () => Promise<void>;
   resetear: () => Promise<void>;
+  iniciarDesde: (paso: number) => void;
+  setMostrarMenu: (v: boolean) => void;
+  verificarParaUsuario: (userId: number) => Promise<void>;
 }
 
 const TutorialContext = createContext<TutorialContextValue>({
-  mostrar: false,
-  listo: false,
-  completar: async () => {},
-  resetear: async () => {},
+  mostrar: false, listo: false, pasoInicial: 0, mostrarMenu: false,
+  completar: async () => {}, resetear: async () => {},
+  iniciarDesde: () => {}, setMostrarMenu: () => {},
+  verificarParaUsuario: async () => {},
 });
 
-export function TutorialProvider({ children }: { children: React.ReactNode }) {
-  const [mostrar, setMostrar] = useState(false);
-  const [listo, setListo] = useState(false);
+let tutorialKey = 'tutorial_v1';
 
-  useEffect(() => {
-    AsyncStorage.getItem(TUTORIAL_KEY).then(val => {
-      if (!val) setMostrar(true);
-      setListo(true);
-    });
-  }, []);
+export function TutorialProvider({ children }: { children: React.ReactNode }) {
+  const [mostrar, setMostrar]         = useState(false);
+  const [listo, setListo]             = useState(false);
+  const [pasoInicial, setPasoInicial] = useState(0);
+  const [mostrarMenu, setMostrarMenu] = useState(false);
+
+  // Se llama desde index.tsx cuando ya tenemos el userId
+  async function verificarParaUsuario(userId: number) {
+    tutorialKey = `tutorial_v1_${userId}`;
+    const val = await AsyncStorage.getItem(tutorialKey);
+    if (!val) setMostrar(true);
+    setListo(true);
+  }
 
   async function completar() {
-    await AsyncStorage.setItem(TUTORIAL_KEY, 'done');
+    await AsyncStorage.setItem(tutorialKey, 'done');
     setMostrar(false);
+    setPasoInicial(0);
   }
 
   async function resetear() {
-    await AsyncStorage.removeItem(TUTORIAL_KEY);
+    await AsyncStorage.removeItem(tutorialKey);
+  }
+
+  function iniciarDesde(paso: number) {
+    setPasoInicial(paso);
+    setMostrarMenu(false);
     setMostrar(true);
   }
 
   return (
-    <TutorialContext.Provider value={{ mostrar, listo, completar, resetear }}>
+    <TutorialContext.Provider value={{
+      mostrar, listo, pasoInicial, mostrarMenu,
+      completar, resetear, iniciarDesde, setMostrarMenu,
+      verificarParaUsuario,
+    }}>
       {children}
     </TutorialContext.Provider>
   );

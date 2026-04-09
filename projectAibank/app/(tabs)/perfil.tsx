@@ -27,7 +27,7 @@ export default function PerfilScreen() {
   // Animación toggle tema
   const rotateAnim = useRef(new Animated.Value(0)).current;
   // Reiniciar tutorial
-  const { resetear } = useTutorial();
+  const { resetear, setMostrarMenu } = useTutorial();
 
   useEffect(() => { loadData(); }, []);
 
@@ -74,8 +74,9 @@ export default function PerfilScreen() {
     setRefreshing(false);
   }
 
-  async function handleResetTutorial() {
-    await resetear();
+  async function handleAbrirMenuTutorial() {
+    //await resetear();
+    setMostrarMenu(true);
     router.replace('/(tabs)');
   }
 
@@ -280,7 +281,7 @@ export default function PerfilScreen() {
             </TouchableOpacity>
             
           ))}
-          <TouchableOpacity style={s.settingItem} onPress={handleResetTutorial}>
+          <TouchableOpacity style={s.settingItem} onPress={handleAbrirMenuTutorial}>
             <View style={s.settingLeft}>
               <View style={s.settingIconWrap}>
                 <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
