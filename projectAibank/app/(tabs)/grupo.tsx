@@ -109,10 +109,16 @@ export default function GrupoScreen() {
 
       if (pendientesData) setPendientes(pendientesData);
 
-      const { data: objData } = await supabase
-        .from("liga_objectives")
-        .select("*")
-        .eq("liga_id", grupoData.liga_id);
+      let objData: any[] | null = null;
+      if (grupoData.liga_id) {
+        const { data } = await supabase
+          .from("liga_objectives").select("*").eq("liga_id", grupoData.liga_id);
+        objData = data;
+      }
+      if (!objData || objData.length === 0) {
+        const { data } = await supabase.from("liga_objectives").select("*");
+        objData = data;
+      }
 
       if (objData) setObjetivos(objData);
 
@@ -238,7 +244,7 @@ export default function GrupoScreen() {
         nombre_grupo: nombreGrupo,
         temporada_id: 3,
         creador_id: userId,
-        liga_id: 8,
+        liga_id: 7,
         tipo_formacion: "libre",
         max_miembros: 5,
         codigo_invitacion: codigo,
@@ -368,7 +374,7 @@ export default function GrupoScreen() {
       )
     `,
       )
-      .eq("liga_id", 8)
+      .eq("liga_id", 7)
       .neq("creador_id", userId);
 
     if (!gruposDisponibles || gruposDisponibles.length === 0) {

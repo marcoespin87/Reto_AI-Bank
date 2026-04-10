@@ -23,6 +23,7 @@ interface BancoUIProps {
   ligaNombre: string;
   medallaNombre: string;
   medallaActual: number;
+  posicionEnLiga: number | null;
   saldo: number;
   numeroCuenta: string;
   transactions: any[];
@@ -77,6 +78,7 @@ export default function BancoUI({
   ligaNombre,
   medallaNombre,
   medallaActual,
+  posicionEnLiga,
   saldo,
   numeroCuenta,
   transactions,
@@ -161,11 +163,11 @@ export default function BancoUI({
               <Text style={s.subGreeting}>SECCIÓN BANCO</Text>
             </View>
           </View>
-          {(ligaNombre || medallaNombre) && (
+          {(ligaNombre || posicionEnLiga) && (
             <TouchableOpacity style={s.leagueBadge}>
               <Ionicons name="trophy-outline" size={11} color={colors.primary} style={{ marginRight: 4 }} />
               <Text style={s.leagueBadgeText}>
-                {[ligaNombre, medallaNombre || `Medalla ${medallaActual}`].filter(Boolean).join(' • ')}
+                {[ligaNombre, posicionEnLiga ? `#${posicionEnLiga} en liga` : null].filter(Boolean).join(' • ')}
               </Text>
             </TouchableOpacity>
           )}

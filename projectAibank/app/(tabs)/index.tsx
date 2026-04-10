@@ -140,7 +140,7 @@ export default function HomeScreen() {
 
       supabase
         .from("group_members")
-        .select("mailes_aportados")
+        .select("users(mailes_acumulados)")
         .eq("group_id", grupoId)
         .eq("estado", "activo"),
 
@@ -178,7 +178,7 @@ export default function HomeScreen() {
 
     const grupoMembers = groupMembersResult.data ?? [];
     const grupoMailesTotal = grupoMembers.reduce(
-      (s: number, m: any) => s + (m.mailes_aportados ?? 0),
+      (s: number, m: any) => s + (m.users?.mailes_acumulados ?? 0),
       0
     );
     const grupoMiembrosCount = grupoMembers.length;

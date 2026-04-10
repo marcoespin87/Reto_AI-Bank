@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import Markdown from "react-native-markdown-display";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 interface Message {
   role: "bot" | "user";
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export default function ChatbotModal({ visible, onClose }: Props) {
+  const { colors, isDark } = useTheme();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "bot",
@@ -87,6 +89,115 @@ export default function ChatbotModal({ visible, onClose }: Props) {
 
   const sheetMaxHeight = screenHeight * 0.85;
 
+  // Theme-derived colors
+  const sheetBg = isDark ? "#0d1b2e" : colors.cardBackground;
+  const headerTitleColor = colors.textPrimary;
+  const headerSubColor = colors.textSecondary;
+  const dividerColor = isDark ? "#1f2a3d" : colors.borderMedium;
+  const botBubbleBg = isDark ? "#1a2740" : colors.cardBackgroundAlt;
+  const closeBtnBg = isDark ? "#1f2a3d" : colors.backgroundSecondary;
+  const closeBtnTextColor = colors.textSecondary;
+  const inputBg = isDark ? "#0a1525" : colors.inputBackground;
+  const inputBorderColor = isDark ? "#1f2a3d" : colors.borderMedium;
+  const sendBtnBg = colors.primary;
+  const sendBtnTextColor = isDark ? "#002b73" : "#ffffff";
+  const userBubbleBg = colors.primary;
+  const userTextColor = isDark ? "#002b73" : "#ffffff";
+  const betaBadgeBg = isDark ? "rgba(178,197,255,0.1)" : colors.primaryDim;
+  const betaBadgeBorder = isDark ? "rgba(178,197,255,0.25)" : colors.primaryBorder;
+  const overlayBg = "rgba(0,0,0,0.6)";
+
+  const markdownStyles = StyleSheet.create({
+    body: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      lineHeight: 22,
+    },
+    strong: {
+      color: colors.primary,
+      fontWeight: "700",
+    },
+    em: {
+      color: colors.textPrimary,
+      fontStyle: "italic",
+    },
+    heading1: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: "800",
+      marginBottom: 6,
+      marginTop: 4,
+    },
+    heading2: {
+      color: colors.textPrimary,
+      fontSize: 15,
+      fontWeight: "700",
+      marginBottom: 4,
+      marginTop: 4,
+    },
+    heading3: {
+      color: colors.primary,
+      fontSize: 14,
+      fontWeight: "700",
+      marginBottom: 4,
+      marginTop: 4,
+    },
+    bullet_list: {
+      marginVertical: 4,
+    },
+    ordered_list: {
+      marginVertical: 4,
+    },
+    list_item: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      lineHeight: 22,
+      marginBottom: 2,
+    },
+    bullet_list_icon: {
+      color: colors.primary,
+      marginRight: 6,
+    },
+    code_inline: {
+      backgroundColor: inputBg,
+      color: colors.primary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      fontSize: 13,
+      paddingHorizontal: 4,
+      borderRadius: 4,
+    },
+    fence: {
+      backgroundColor: inputBg,
+      borderRadius: 8,
+      padding: 12,
+      marginVertical: 6,
+    },
+    code_block: {
+      color: colors.primary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      fontSize: 13,
+    },
+    blockquote: {
+      backgroundColor: colors.primaryDim,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
+      paddingLeft: 10,
+      marginVertical: 6,
+    },
+    hr: {
+      backgroundColor: dividerColor,
+      height: 1,
+      marginVertical: 8,
+    },
+    link: {
+      color: colors.primary,
+      textDecorationLine: "underline",
+    },
+    paragraph: {
+      marginVertical: 0,
+    },
+  });
+
   return (
     <Modal
       visible={visible}
@@ -96,31 +207,31 @@ export default function ChatbotModal({ visible, onClose }: Props) {
       statusBarTranslucent={false}
     >
       <KeyboardAvoidingView
-        style={s.overlay}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        style={[s.overlay, { backgroundColor: overlayBg }]}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom : 0}
       >
-        <View style={[s.sheet, { maxHeight: sheetMaxHeight, paddingBottom: insets.bottom }]}>
+        <View style={[s.sheet, { maxHeight: sheetMaxHeight, paddingBottom: insets.bottom, backgroundColor: sheetBg }]}>
           {/* Header */}
           <View style={s.header}>
             <View style={s.headerLeft}>
               <Text style={s.headerIcon}>🤖</Text>
               <View>
-                <Text style={s.headerTitle}>AI Coach</Text>
-                <Text style={s.headerSub}>Asistente del Mundial</Text>
+                <Text style={[s.headerTitle, { color: headerTitleColor }]}>AI Coach</Text>
+                <Text style={[s.headerSub, { color: headerSubColor }]}>Asistente del Mundial</Text>
               </View>
             </View>
             <View style={s.headerRight}>
-              <View style={s.betaBadge}>
-                <Text style={s.betaText}>Beta</Text>
+              <View style={[s.betaBadge, { backgroundColor: betaBadgeBg, borderColor: betaBadgeBorder }]}>
+                <Text style={[s.betaText, { color: colors.primary }]}>Beta</Text>
               </View>
-              <TouchableOpacity style={s.closeBtn} onPress={onClose}>
-                <Text style={s.closeBtnText}>✕</Text>
+              <TouchableOpacity style={[s.closeBtn, { backgroundColor: closeBtnBg }]} onPress={onClose}>
+                <Text style={[s.closeBtnText, { color: closeBtnTextColor }]}>✕</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={s.divider} />
+          <View style={[s.divider, { backgroundColor: dividerColor }]} />
 
           {/* Messages */}
           <ScrollView
@@ -144,12 +255,12 @@ export default function ChatbotModal({ visible, onClose }: Props) {
                 ]}
               >
                 {msg.role === "bot" ? (
-                  <View style={s.botBubble}>
+                  <View style={[s.botBubble, { backgroundColor: botBubbleBg }]}>
                     <Markdown style={markdownStyles}>{msg.text}</Markdown>
                   </View>
                 ) : (
-                  <View style={s.userBubble}>
-                    <Text style={s.userText}>{msg.text}</Text>
+                  <View style={[s.userBubble, { backgroundColor: userBubbleBg }]}>
+                    <Text style={[s.userText, { color: userTextColor }]}>{msg.text}</Text>
                   </View>
                 )}
               </View>
@@ -157,34 +268,35 @@ export default function ChatbotModal({ visible, onClose }: Props) {
 
             {loading && (
               <View style={s.bubbleWrapperBot}>
-                <View style={[s.botBubble, s.loadingBubble]}>
-                  <ActivityIndicator size="small" color="#b2c5ff" />
+                <View style={[s.botBubble, s.loadingBubble, { backgroundColor: botBubbleBg }]}>
+                  <ActivityIndicator size="small" color={colors.primary} />
                 </View>
               </View>
             )}
           </ScrollView>
 
           {/* Input */}
-          <View style={s.inputRow}>
+          <View style={[s.inputRow, { borderTopColor: dividerColor }]}>
             <TextInput
-              style={s.input}
+              style={[s.input, { backgroundColor: inputBg, color: colors.textPrimary, borderColor: inputBorderColor }]}
               placeholder="Pregunta al AI Coach..."
-              placeholderTextColor="#424655"
+              placeholderTextColor={colors.textMuted}
               value={input}
               onChangeText={setInput}
               onSubmitEditing={sendMessage}
               returnKeyType="send"
+              blurOnSubmit={false}
               multiline
             />
             <TouchableOpacity
-              style={[s.sendBtn, loading && s.sendBtnDisabled]}
+              style={[s.sendBtn, { backgroundColor: sendBtnBg }, loading && s.sendBtnDisabled]}
               onPress={sendMessage}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#0d0f1a" />
+                <ActivityIndicator size="small" color={sendBtnTextColor} />
               ) : (
-                <Text style={s.sendIcon}>↑</Text>
+                <Text style={[s.sendIcon, { color: sendBtnTextColor }]}>↑</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -197,15 +309,13 @@ export default function ChatbotModal({ visible, onClose }: Props) {
 const s = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "#0d1b2e",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 0.5,
-    borderColor: "#1f2a3d",
+    borderColor: "rgba(0,0,0,0.1)",
     flex: 1,
   },
   header: {
@@ -223,12 +333,10 @@ const s = StyleSheet.create({
   },
   headerIcon: { fontSize: 28 },
   headerTitle: {
-    color: "#d7e3fc",
     fontSize: 17,
     fontWeight: "800",
   },
   headerSub: {
-    color: "#8c90a1",
     fontSize: 11,
     marginTop: 1,
   },
@@ -238,15 +346,12 @@ const s = StyleSheet.create({
     gap: 10,
   },
   betaBadge: {
-    backgroundColor: "rgba(178,197,255,0.1)",
     borderWidth: 1,
-    borderColor: "rgba(178,197,255,0.25)",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
   betaText: {
-    color: "#b2c5ff",
     fontSize: 9,
     fontWeight: "700",
   },
@@ -254,18 +359,15 @@ const s = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#1f2a3d",
     alignItems: "center",
     justifyContent: "center",
   },
   closeBtnText: {
-    color: "#8c90a1",
     fontSize: 14,
     fontWeight: "700",
   },
   divider: {
     height: 0.5,
-    backgroundColor: "#1f2a3d",
     marginHorizontal: 20,
   },
   messages: {
@@ -286,7 +388,6 @@ const s = StyleSheet.create({
     justifyContent: "flex-end",
   },
   botBubble: {
-    backgroundColor: "#1a2740",
     borderRadius: 16,
     borderBottomLeftRadius: 4,
     paddingHorizontal: 14,
@@ -298,7 +399,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
   },
   userBubble: {
-    backgroundColor: "#b2c5ff",
     borderRadius: 16,
     borderBottomRightRadius: 4,
     paddingHorizontal: 14,
@@ -306,7 +406,6 @@ const s = StyleSheet.create({
     maxWidth: "85%",
   },
   userText: {
-    color: "#002b73",
     fontSize: 14,
     fontWeight: "600",
     lineHeight: 20,
@@ -319,25 +418,20 @@ const s = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 14,
     borderTopWidth: 0.5,
-    borderTopColor: "#1f2a3d",
   },
   input: {
     flex: 1,
-    backgroundColor: "#0a1525",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    color: "#d7e3fc",
     fontSize: 14,
     borderWidth: 0.5,
-    borderColor: "#1f2a3d",
     maxHeight: 100,
   },
   sendBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#b2c5ff",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -345,99 +439,7 @@ const s = StyleSheet.create({
     opacity: 0.5,
   },
   sendIcon: {
-    color: "#002b73",
     fontSize: 18,
     fontWeight: "800",
-  },
-});
-
-const markdownStyles = StyleSheet.create({
-  body: {
-    color: "#d7e3fc",
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  strong: {
-    color: "#b2c5ff",
-    fontWeight: "700",
-  },
-  em: {
-    color: "#d7e3fc",
-    fontStyle: "italic",
-  },
-  heading1: {
-    color: "#d7e3fc",
-    fontSize: 16,
-    fontWeight: "800",
-    marginBottom: 6,
-    marginTop: 4,
-  },
-  heading2: {
-    color: "#d7e3fc",
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 4,
-    marginTop: 4,
-  },
-  heading3: {
-    color: "#b2c5ff",
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 4,
-    marginTop: 4,
-  },
-  bullet_list: {
-    marginVertical: 4,
-  },
-  ordered_list: {
-    marginVertical: 4,
-  },
-  list_item: {
-    color: "#d7e3fc",
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 2,
-  },
-  bullet_list_icon: {
-    color: "#b2c5ff",
-    marginRight: 6,
-  },
-  code_inline: {
-    backgroundColor: "#0a1525",
-    color: "#b2c5ff",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 13,
-    paddingHorizontal: 4,
-    borderRadius: 4,
-  },
-  fence: {
-    backgroundColor: "#0a1525",
-    borderRadius: 8,
-    padding: 12,
-    marginVertical: 6,
-  },
-  code_block: {
-    color: "#b2c5ff",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 13,
-  },
-  blockquote: {
-    backgroundColor: "rgba(178,197,255,0.05)",
-    borderLeftWidth: 3,
-    borderLeftColor: "#b2c5ff",
-    paddingLeft: 10,
-    marginVertical: 6,
-  },
-  hr: {
-    backgroundColor: "#1f2a3d",
-    height: 1,
-    marginVertical: 8,
-  },
-  link: {
-    color: "#b2c5ff",
-    textDecorationLine: "underline",
-  },
-  paragraph: {
-    marginVertical: 0,
   },
 });

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Modal,
@@ -11,6 +12,7 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "../lib/supabase";
 import { useTheme } from "../context/ThemeContext";
 import BottomNav from "./BottomNav";
 import RankingLiga from './RankingLiga';
@@ -98,6 +100,36 @@ export default function GrupoView({
 }: GrupoViewProps) {
   const { colors } = useTheme();
 
+  // Cargar objetivos y progresos directamente aquí para garantizar que lleguen
+  const [objetivosLocal, setObjetivosLocal] = useState<any[]>([]);
+  const [progresosLocal, setProgresosLocal] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!grupo?.id) return;
+    async function cargarObjetivos() {
+      // Intentar con liga_id del grupo; si no hay, traer todos los objetivos
+      let objData: any[] | null = null;
+      if (grupo.liga_id) {
+        const { data } = await supabase
+          .from("liga_objectives").select("*").eq("liga_id", grupo.liga_id);
+        objData = data;
+      }
+      if (!objData || objData.length === 0) {
+        const { data } = await supabase.from("liga_objectives").select("*");
+        objData = data;
+      }
+      const { data: progData } = await supabase
+        .from("group_objective_progress").select("*").eq("group_id", grupo.id);
+      if (objData && objData.length > 0) setObjetivosLocal(objData);
+      if (progData) setProgresosLocal(progData);
+    }
+    cargarObjetivos();
+  }, [grupo?.liga_id, grupo?.id]);
+
+  // Usar los datos locales si los del prop están vacíos
+  const objetivosEfectivos = objetivos.length > 0 ? objetivos : objetivosLocal;
+  const progresosEfectivos = progresos.length > 0 ? progresos : progresosLocal;
+
   const milesTotal = miembros.reduce(
     (sum, m) => sum + (m.users?.mailes_acumulados || 0),
     0,
@@ -108,9 +140,14 @@ export default function GrupoView({
   );
 
   function getProgreso(objectiveId: number) {
-    const p = progresos.find((p) => p.objective_id === objectiveId);
+    const p = progresosEfectivos.find((p: any) => p.objective_id === objectiveId);
     return p?.progreso_actual || 0;
   }
+
+  const objetivosCompletados = objetivosEfectivos.filter((obj: any) => {
+    const p = getProgreso(obj.id);
+    return obj.valor_objetivo > 0 && (p >= obj.valor_objetivo || milesTotal >= obj.valor_objetivo);
+  }).length;
 
   function calcularEstrellas(mailes: number): number {
     if (mailes >= 5000) return 5;
@@ -343,7 +380,7 @@ export default function GrupoView({
                 <Text style={s.statLabel}>Miembros</Text>
               </View>
               <View style={s.statCard}>
-                <Text style={s.statValue}>{objetivos.length}</Text>
+                <Text style={s.statValue}>{objetivosCompletados}/{objetivosEfectivos.length}</Text>
                 <Text style={s.statLabel}>Objetivos</Text>
               </View>
             </View>
@@ -538,37 +575,54 @@ export default function GrupoView({
                 </View>
                 <Text style={s.sectionSub}>ESTA SEMANA</Text>
               </View>
-              {objetivos.map((obj) => {
+              {objetivosEfectivos.map((obj: any) => {
                 const progreso = getProgreso(obj.id);
-                const pct = Math.min(
-                  (progreso / obj.valor_objetivo) * 100,
-                  100,
-                );
+                const valorObj = obj.valor_objetivo || 0;
+                const completado = valorObj > 0 && (progreso >= valorObj || milesTotal >= valorObj);
+                const progresoReal = completado ? valorObj : Math.min(progreso > 0 ? progreso : milesTotal, valorObj);
+                const pct = valorObj > 0 ? Math.min(((progreso > 0 ? progreso : milesTotal) / valorObj) * 100, 100) : 0;
                 return (
-                  <View key={obj.id} style={s.objetivoItem}>
+                  <View key={obj.id} style={[s.objetivoItem, completado && { opacity: 0.9 }]}>
                     <View style={s.objetivoHeader}>
-                      <Text style={s.objetivoNombre}>{obj.nombre}</Text>
-                      <View style={s.mailesReward}>
-                        <Text style={s.mailesRewardText}>
-                          +{obj.recompensa_mailes} mA
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+                        {completado && (
+                          <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                        )}
+                        <Text style={[s.objetivoNombre, completado && { color: colors.textSecondary }]}>
+                          {obj.nombre}
                         </Text>
                       </View>
+                      {completado ? (
+                        <View style={[s.mailesReward, { backgroundColor: colors.successDim }]}>
+                          <Text style={[s.mailesRewardText, { color: colors.success }]}>
+                            ✓ Completado
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={s.mailesReward}>
+                          <Text style={s.mailesRewardText}>
+                            +{obj.recompensa_mailes} mA
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     <Text style={s.objetivoDesc}>{obj.descripcion}</Text>
                     <View style={s.progressRow}>
                       <Text style={s.progressText}>
-                        {progreso}/{obj.valor_objetivo}
+                        {progresoReal}/{valorObj}
                       </Text>
-                      <Text style={s.progressPct}>{Math.round(pct)}%</Text>
+                      <Text style={[s.progressPct, completado && { color: colors.success }]}>
+                        {Math.round(pct)}%
+                      </Text>
                     </View>
                     <View style={s.progressBar}>
                       <View
                         style={[
                           s.progressFill,
                           { width: `${pct}%` },
-                          obj.es_objetivo_maximo && {
-                            backgroundColor: colors.gold,
-                          },
+                          completado
+                            ? { backgroundColor: colors.success }
+                            : obj.es_objetivo_maximo && { backgroundColor: colors.gold },
                         ]}
                       />
                     </View>
@@ -578,7 +632,7 @@ export default function GrupoView({
             </View>
             <RankingLiga
               grupoActualId={grupo?.id ?? null}
-              ligaId={grupo?.liga_id ?? 8}
+              ligaId={grupo?.liga_id ?? 7}
             />
           </View>
         )}

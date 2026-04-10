@@ -7,7 +7,7 @@ import { useLigaMedal } from "../../lib/useLigaMedal";
 import { supabase } from "../../lib/supabase";
 
 export default function BancoScreen() {
-  const { ligaNombre, medallaNombre, medallaActual } = useLigaMedal();
+  const { ligaNombre, medallaNombre, medallaActual, posicionEnLiga } = useLigaMedal();
   const [userName, setUserName] = useState("");
   const [saldo, setSaldo] = useState(4280.5);
   const [userId, setUserId] = useState<number | null>(null);
@@ -201,6 +201,7 @@ export default function BancoScreen() {
       ligaNombre={ligaNombre}
       medallaNombre={medallaNombre}
       medallaActual={medallaActual}
+      posicionEnLiga={posicionEnLiga}
       saldo={saldo}
       numeroCuenta={numeroCuenta}
       transactions={transactions}
