@@ -1,45 +1,63 @@
-import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Alert, Animated } from "react-native";
-import MundialUI, { PARTIDO } from "../../components/MundialUI";
-import { useLigaMedal } from "../../lib/useLigaMedal";
-import { supabase } from "../../lib/supabase";
+import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Animated } from 'react-native';
+import MundialUI, { PredState } from '../../components/MundialUI';
+import { useLigaMedal } from '../../lib/useLigaMedal';
+import { useMundialPartidos } from '../../lib/useMundialPartidos';
+import { supabase } from '../../lib/supabase';
 
 export default function MundialScreen() {
   const { ligaNombre, medallaNombre, medallaActual, posicionEnLiga } = useLigaMedal();
+
   const [userId, setUserId] = useState<number | null>(null);
-  const [golesLocal, setGolesLocal] = useState(1);
-  const [golesVisitante, setGolesVisitante] = useState(0);
-  const [prediccionEnviada, setPrediccionEnviada] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [semana, setSemana] = useState(1);
+  const [prediccionesState, setPrediccionesState] = useState<Record<number, PredState>>({});
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [partidoActivoId, setPartidoActivoId] = useState<number | null>(null);
   const [rachaActiva, setRachaActiva] = useState(false);
-  const [mostrarPrediccion, setMostrarPrediccion] = useState(false);
   const [chatbotVisible, setChatbotVisible] = useState(false);
+
+  const { partidos, loading, refetch } = useMundialPartidos(semana, userId);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  // Animación pulse para el countdown badge
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 0.5,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 700,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, { toValue: 0.5, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
       ]),
     );
     pulse.start();
     return () => pulse.stop();
   }, []);
 
+  // Cargar usuario al montar
   useEffect(() => {
     loadUser();
   }, []);
+
+  // Sincronizar predicciones del usuario cuando cambian los partidos
+  useEffect(() => {
+    if (!partidos.length) return;
+    setPrediccionesState((prev) => {
+      const next = { ...prev };
+      for (const p of partidos) {
+        if (p.prediccion_usuario && !next[p.id]) {
+          next[p.id] = {
+            goles_local: p.prediccion_usuario.goles_local,
+            goles_visitante: p.prediccion_usuario.goles_visitante,
+            enviada: true,
+            submitting: false,
+          };
+        } else if (!next[p.id]) {
+          next[p.id] = { goles_local: 1, goles_visitante: 0, enviada: false, submitting: false };
+        }
+      }
+      return next;
+    });
+  }, [partidos]);
 
   async function loadUser() {
     const {
@@ -48,105 +66,136 @@ export default function MundialScreen() {
     if (!user) return;
 
     const { data } = await supabase
-      .from("users")
-      .select("id, mailes_acumulados, nombre")
-      .eq("email", user.email)
+      .from('users')
+      .select('id, mailes_acumulados')
+      .eq('email', user.email)
       .single();
 
-    if (data) {
-      setUserId(data.id);
+    if (!data) return;
+    setUserId(data.id);
 
-      const { data: pred } = await supabase
-        .from("predictions")
-        .select("*")
-        .eq("user_id", data.id)
-        .eq("partido_id", PARTIDO.id)
-        .single();
+    // Verificar racha activa (2+ predicciones correctas recientes)
+    const { data: preds } = await supabase
+      .from('predictions')
+      .select('id')
+      .eq('user_id', data.id)
+      .eq('es_correcto', true)
+      .order('id', { ascending: false })
+      .limit(3);
 
-      if (pred) {
-        setPrediccionEnviada(true);
-        setGolesLocal(pred.goles_local);
-        setGolesVisitante(pred.goles_visitante);
-      }
-
-      const { data: preds } = await supabase
-        .from("predictions")
-        .select("*")
-        .eq("user_id", data.id)
-        .eq("es_correcto", true)
-        .order("id", { ascending: false })
-        .limit(3);
-
-      if (preds && preds.length >= 2) setRachaActiva(true);
-    }
+    if (preds && preds.length >= 2) setRachaActiva(true);
   }
 
-  async function confirmarPrediccion() {
-    if (!userId) {
-      Alert.alert("Error", "No se pudo identificar tu usuario");
-      return;
-    }
-    if (prediccionEnviada) {
-      Alert.alert(
-        "Ya predijiste",
-        "Solo puedes enviar una predicción por partido",
-      );
-      return;
-    }
+  function handleToggleExpand(id: number) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
-    setSubmitting(true);
+  function handleAbrirPrediccion(id: number) {
+    const pred = prediccionesState[id];
+    if (pred?.enviada) return;
+    setPartidoActivoId(id);
+  }
+
+  function handleGolesLocalChange(id: number, v: number) {
+    setPrediccionesState((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] ?? defaultPred()), goles_local: v },
+    }));
+  }
+
+  function handleGolesVisitanteChange(id: number, v: number) {
+    setPrediccionesState((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] ?? defaultPred()), goles_visitante: v },
+    }));
+  }
+
+  async function handleConfirmar(partidoId: number) {
+    if (!userId) {
+      Alert.alert('Error', 'No se pudo identificar tu usuario');
+      return;
+    }
+    const pred = prediccionesState[partidoId];
+    if (!pred || pred.enviada) return;
+
+    const partido = partidos.find((p) => p.id === partidoId);
+    if (!partido) return;
+
+    setPrediccionesState((prev) => ({
+      ...prev,
+      [partidoId]: { ...prev[partidoId], submitting: true },
+    }));
+
     try {
-      const { error } = await supabase.from("predictions").insert({
-        user_id: userId,
-        partido_id: PARTIDO.id,
-        equipo_local: PARTIDO.local.nombre,
-        equipo_visitante: PARTIDO.visitante.nombre,
-        goles_local: golesLocal,
-        goles_visitante: golesVisitante,
-        estado: "pendiente",
-        mailes_apostados: 0,
-        fase: PARTIDO.fase,
-      });
+      const { error } = await (supabase as any)
+        .schema('mundial')
+        .from('predicciones_mundial')
+        .insert({
+          user_id: userId,
+          partido_id: partidoId,
+          goles_local_predichos: pred.goles_local,
+          goles_visitante_predichos: pred.goles_visitante,
+        });
+
       if (error) throw error;
-      setPrediccionEnviada(true);
+
+      setPrediccionesState((prev) => ({
+        ...prev,
+        [partidoId]: { ...prev[partidoId], enviada: true, submitting: false },
+      }));
+
+      const maxMailes = partido.recompensa_exacto + (rachaActiva ? partido.recompensa_racha : 0);
       Alert.alert(
-        "¡Predicción confirmada! ⚽",
-        `${PARTIDO.local.nombre} ${golesLocal} - ${golesVisitante} ${PARTIDO.visitante.nombre}\n\nGanarás hasta ${(PARTIDO.recompensas.marcadorExacto + (rachaActiva ? PARTIDO.recompensas.rachaBono : 0)).toLocaleString()} mAiles si aciertas.`,
-        [{ text: "Perfecto", style: "default" }],
+        '¡Predicción confirmada! ⚽',
+        `${partido.equipo_local.nombre} ${pred.goles_local} - ${pred.goles_visitante} ${partido.equipo_visitante.nombre}\n\nGanarás hasta ${maxMailes.toLocaleString()} mAiles si aciertas.`,
+        [{ text: 'Perfecto', style: 'default' }],
       );
+      setPartidoActivoId(null);
     } catch {
-      setPrediccionEnviada(true);
+      // Si falla la inserción igual marcamos como enviada localmente
+      setPrediccionesState((prev) => ({
+        ...prev,
+        [partidoId]: { ...prev[partidoId], enviada: true, submitting: false },
+      }));
       Alert.alert(
-        "¡Predicción registrada! ⚽",
-        `${PARTIDO.local.nombre} ${golesLocal} - ${golesVisitante} ${PARTIDO.visitante.nombre}`,
+        '¡Predicción registrada! ⚽',
+        `${partido.equipo_local.nombre} ${pred.goles_local} - ${pred.goles_visitante} ${partido.equipo_visitante.nombre}`,
       );
-    } finally {
-      setSubmitting(false);
+      setPartidoActivoId(null);
     }
   }
 
   return (
     <MundialUI
-      ligaNombre={ligaNombre}
-      medallaNombre={medallaNombre}
-      medallaActual={medallaActual}
-      posicionEnLiga={posicionEnLiga}
-      golesLocal={golesLocal}
-      golesVisitante={golesVisitante}
-      prediccionEnviada={prediccionEnviada}
-      submitting={submitting}
+      partidos={partidos}
+      loading={loading}
+      semana={semana}
+      onSemanaChange={(s) => { setSemana(s); setPartidoActivoId(null); }}
+      prediccionesState={prediccionesState}
+      partidoActivoId={partidoActivoId}
+      expandedIds={expandedIds}
+      onToggleExpand={handleToggleExpand}
+      onAbrirPrediccion={handleAbrirPrediccion}
+      onCerrarPrediccion={() => setPartidoActivoId(null)}
+      onGolesLocalChange={handleGolesLocalChange}
+      onGolesVisitanteChange={handleGolesVisitanteChange}
+      onConfirmar={handleConfirmar}
       rachaActiva={rachaActiva}
-      mostrarPrediccion={mostrarPrediccion}
       chatbotVisible={chatbotVisible}
-      pulseAnim={pulseAnim}
-      onBack={() => router.replace("/(tabs)")}
-      onPredecir={() => setMostrarPrediccion(true)}
-      onClosePredecir={() => setMostrarPrediccion(false)}
-      onGolesLocalChange={setGolesLocal}
-      onGolesVisitanteChange={setGolesVisitante}
-      onConfirmar={confirmarPrediccion}
       onOpenChatbot={() => setChatbotVisible(true)}
       onCloseChatbot={() => setChatbotVisible(false)}
+      pulseAnim={pulseAnim}
+      ligaNombre={ligaNombre}
+      posicionEnLiga={posicionEnLiga}
+      onBack={() => router.replace('/(tabs)')}
     />
   );
+}
+
+function defaultPred(): PredState {
+  return { goles_local: 1, goles_visitante: 0, enviada: false, submitting: false };
 }
