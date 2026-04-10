@@ -14,6 +14,7 @@ export default function GrupoScreen() {
   const [grupoPendiente, setGrupoPendiente] = useState<any | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [partidosMundial, setPartidosMundial] = useState<any[]>([]);
 
   const [modalCrear, setModalCrear] = useState(false);
   const [modalUnirse, setModalUnirse] = useState(false);
@@ -31,7 +32,26 @@ export default function GrupoScreen() {
 
   useEffect(() => {
     loadData();
+    loadPartidosMundial();
   }, []);
+
+  async function loadPartidosMundial() {
+    const { data } = await supabase
+      .schema("mundial")
+      .from("partidos_mundial")
+      .select(`
+        id,
+        fecha_partido,
+        jornada,
+        local:equipos_mundial!equipo_local_id ( nombre, bandera_url ),
+        visitante:equipos_mundial!equipo_visitante_id ( nombre, bandera_url )
+      `)
+      .eq("estado", "programado")
+      .order("fecha_partido", { ascending: true })
+      .limit(6);
+
+    if (data) setPartidosMundial(data);
+  }
 
   async function loadData() {
     const {
@@ -604,6 +624,7 @@ export default function GrupoScreen() {
       grupoPendiente={grupoPendiente}
       onCancelarSolicitud={onCancelarSolicitud}
       posicionEnLiga={posicionEnLiga}
+      partidosMundial={partidosMundial}
     />
   );
 }

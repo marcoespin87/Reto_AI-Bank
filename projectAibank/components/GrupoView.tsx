@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
+    Image,
     Modal,
     RefreshControl,
     ScrollView,
@@ -38,6 +39,7 @@ interface GrupoViewProps {
   ligaNombre: string;
   grupoPendiente: any | null;
   posicionEnLiga: number | null;
+  partidosMundial: any[];
   onRefresh: () => void;
   setModalCrear: (v: boolean) => void;
   setModalUnirse: (v: boolean) => void;
@@ -97,6 +99,7 @@ export default function GrupoView({
   onRenombrarGrupo,
   onCancelarSolicitud,
   posicionEnLiga,
+  partidosMundial,
 }: GrupoViewProps) {
   const { colors } = useTheme();
 
@@ -634,6 +637,84 @@ export default function GrupoView({
               grupoActualId={grupo?.id ?? null}
               ligaId={grupo?.liga_id ?? 7}
             />
+          </View>
+        )}
+
+        {/* ─── Próximos partidos del Mundial 2026 ─────────────── */}
+        {partidosMundial.length > 0 && (
+          <View style={s.mundialSection}>
+            <View style={s.mundialSectionHeader}>
+              <Text style={s.mundialSectionTitle}>⚽ Próximos partidos</Text>
+              <Text style={s.mundialSectionBadge}>MUNDIAL 2026</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.mundialScrollContent}
+            >
+              {partidosMundial.map((partido: any) => (
+                <View key={partido.id} style={s.mundialCard}>
+                  {/* Equipos */}
+                  <View style={s.mundialTeamsRow}>
+                    {/* Local */}
+                    <View style={s.mundialTeamCol}>
+                      <View style={s.mundialFlagCircle}>
+                        {partido.local?.bandera_url ? (
+                          <Image
+                            source={{ uri: partido.local.bandera_url }}
+                            style={s.mundialFlagImg}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Text style={s.mundialFlagFallback}>
+                            {partido.local?.nombre?.substring(0, 3).toUpperCase() ?? "?"}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={s.mundialTeamName} numberOfLines={2}>
+                        {partido.local?.nombre ?? "Local"}
+                      </Text>
+                    </View>
+
+                    <Text style={s.mundialVs}>VS</Text>
+
+                    {/* Visitante */}
+                    <View style={s.mundialTeamCol}>
+                      <View style={s.mundialFlagCircle}>
+                        {partido.visitante?.bandera_url ? (
+                          <Image
+                            source={{ uri: partido.visitante.bandera_url }}
+                            style={s.mundialFlagImg}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Text style={s.mundialFlagFallback}>
+                            {partido.visitante?.nombre?.substring(0, 3).toUpperCase() ?? "?"}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={s.mundialTeamName} numberOfLines={2}>
+                        {partido.visitante?.nombre ?? "Visitante"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Metadatos */}
+                  <View style={s.mundialMeta}>
+                    {partido.jornada ? (
+                      <Text style={s.mundialJornada}>{partido.jornada}</Text>
+                    ) : null}
+                    <Text style={s.mundialFecha}>
+                      {new Date(partido.fecha_partido).toLocaleDateString("es", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
           </View>
         )}
 
@@ -1517,6 +1598,104 @@ function getStyles(
       fontSize: 13,
       textAlign: "center",
       lineHeight: 20,
+    },
+
+    // ─── Sección Mundial 2026 ─────────────────────────────────
+    mundialSection: {
+      marginTop: 4,
+      marginBottom: 8,
+    },
+    mundialSectionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+      paddingHorizontal: 2,
+    },
+    mundialSectionTitle: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: "800",
+    },
+    mundialSectionBadge: {
+      color: colors.textMuted,
+      fontSize: 9,
+      fontWeight: "700",
+      letterSpacing: 1.4,
+    },
+    mundialScrollContent: {
+      gap: 10,
+      paddingVertical: 4,
+    },
+    mundialCard: {
+      width: 174,
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 18,
+      padding: 14,
+      borderWidth: 0.5,
+      borderColor: colors.borderMedium,
+    },
+    mundialTeamsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    mundialTeamCol: {
+      flex: 1,
+      alignItems: "center",
+      gap: 6,
+    },
+    mundialFlagCircle: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      backgroundColor: colors.cardBackground,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1.5,
+      borderColor: colors.borderMedium,
+      overflow: "hidden",
+    },
+    mundialFlagImg: {
+      width: 46,
+      height: 46,
+    },
+    mundialFlagFallback: {
+      color: colors.primary,
+      fontSize: 9,
+      fontWeight: "800",
+    },
+    mundialTeamName: {
+      color: colors.textPrimary,
+      fontSize: 11,
+      fontWeight: "700",
+      textAlign: "center",
+    },
+    mundialVs: {
+      color: colors.primary,
+      fontSize: 11,
+      fontWeight: "800",
+      paddingHorizontal: 4,
+    },
+    mundialMeta: {
+      alignItems: "center",
+      gap: 3,
+      borderTopWidth: 0.5,
+      borderTopColor: colors.borderMedium,
+      paddingTop: 10,
+    },
+    mundialJornada: {
+      color: colors.textMuted,
+      fontSize: 9,
+      fontWeight: "700",
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+    },
+    mundialFecha: {
+      color: colors.textSecondary,
+      fontSize: 10,
+      fontWeight: "600",
     },
   });
 }
