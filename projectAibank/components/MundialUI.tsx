@@ -1,15 +1,14 @@
 import {
   ActivityIndicator,
   Animated,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import BottomNav from './BottomNav';
@@ -27,18 +26,13 @@ export interface PredState {
 export interface MundialUIProps {
   partidos: PartidoDetalle[];
   loading: boolean;
+  error?: string | null;
+  semanas: number[];
   semana: number;
+  semanaActual: number;
   onSemanaChange: (s: number) => void;
   prediccionesState: Record<number, PredState>;
-  partidoActivoId: number | null;           // ID del partido con stepper abierto
-  expandedIds: Set<number>;
-  onToggleExpand: (id: number) => void;
-  onAbrirPrediccion: (id: number) => void;
-  onCerrarPrediccion: () => void;
-  onGolesLocalChange: (id: number, v: number) => void;
-  onGolesVisitanteChange: (id: number, v: number) => void;
-  onConfirmar: (id: number) => void;
-  rachaActiva: boolean;
+  onVerDetalle: (id: number) => void;
   chatbotVisible: boolean;
   onOpenChatbot: () => void;
   onCloseChatbot: () => void;
@@ -48,23 +42,16 @@ export interface MundialUIProps {
   onBack: () => void;
 }
 
-const SEMANAS = [1, 2];
-
 export default function MundialUI({
   partidos,
   loading,
+  error,
+  semanas,
   semana,
+  semanaActual,
   onSemanaChange,
   prediccionesState,
-  partidoActivoId,
-  expandedIds,
-  onToggleExpand,
-  onAbrirPrediccion,
-  onCerrarPrediccion,
-  onGolesLocalChange,
-  onGolesVisitanteChange,
-  onConfirmar,
-  rachaActiva,
+  onVerDetalle,
   chatbotVisible,
   onOpenChatbot,
   onCloseChatbot,
@@ -79,12 +66,9 @@ export default function MundialUI({
   const fabBottom = navHeight + 14;
   const s = getStyles(colors);
 
-  const partidoActivo = partidoActivoId != null
-    ? partidos.find((p) => p.id === partidoActivoId) ?? null
-    : null;
-  const predActiva = partidoActivoId != null
-    ? prediccionesState[partidoActivoId] ?? { goles_local: 1, goles_visitante: 0, enviada: false, submitting: false }
-    : null;
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const esActiva = semana === semanaActual;
 
   return (
     <SafeAreaView style={s.root}>
@@ -109,206 +93,142 @@ export default function MundialUI({
         ) : null}
       </View>
 
-      {/* Filtro por semana */}
-      <View style={s.semanaTabsRow}>
-        {SEMANAS.map((s_) => (
-          <TouchableOpacity
-            key={s_}
-            style={[s.semanaTab, semana === s_ && s.semanaTabActive]}
-            onPress={() => onSemanaChange(s_)}
-            activeOpacity={0.8}
-          >
-            <Text style={[s.semanaTabText, semana === s_ && s.semanaTabTextActive]}>
-              Semana {s_}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={80}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={s.scroll}
+      {/* Selector de semana desplegable */}
+      <View style={s.selectorRow}>
+        <TouchableOpacity
+          style={[s.selectorBtn, esActiva && s.selectorBtnActiva]}
+          onPress={() => setDropdownOpen(true)}
+          activeOpacity={0.8}
         >
-          {loading ? (
-            <View style={s.emptyState}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={s.emptyText}>Cargando partidos...</Text>
+          <View style={s.selectorBtnInner}>
+            <Text style={s.selectorCalendar}>📅</Text>
+            <View>
+              <Text style={[s.selectorLabel, esActiva && s.selectorLabelActiva]}>
+                Semana {semana}
+                {esActiva ? '  ✦ Activa' : ''}
+              </Text>
+              <Text style={s.selectorSub}>
+                {esActiva ? 'Predicciones habilitadas' : 'Solo visualización'}
+              </Text>
             </View>
-          ) : partidos.length === 0 ? (
-            <View style={s.emptyState}>
-              <Text style={s.emptyEmoji}>🏟️</Text>
-              <Text style={s.emptyTitle}>Sin partidos</Text>
-              <Text style={s.emptyText}>No hay partidos disponibles para la Semana {semana}</Text>
-            </View>
-          ) : (
-            partidos.map((partido) => {
-              const pred = prediccionesState[partido.id];
-              return (
-                <PartidoCard
-                  key={partido.id}
-                  partido={partido}
-                  expanded={expandedIds.has(partido.id)}
-                  onToggleExpand={() => onToggleExpand(partido.id)}
-                  onPredecir={() => onAbrirPrediccion(partido.id)}
-                  prediccion={
-                    pred?.enviada
-                      ? { goles_local: pred.goles_local, goles_visitante: pred.goles_visitante }
-                      : partido.prediccion_usuario
-                  }
-                  enviada={pred?.enviada ?? partido.prediccion_usuario != null}
-                  pulseAnim={pulseAnim}
-                />
-              );
-            })
-          )}
-          <View style={{ height: 260 }} />
-        </ScrollView>
+          </View>
+          <Text style={[s.selectorChevron, esActiva && s.selectorChevronActiva]}>
+            {dropdownOpen ? '▲' : '▼'}
+          </Text>
+        </TouchableOpacity>
 
-        {/* Sticky Bottom: Formulario de predicción */}
-        {partidoActivo && predActiva && (
-          <View style={[s.stickyBottom, { bottom: navHeight }]}>
-            <TouchableOpacity onPress={onCerrarPrediccion} style={s.closeBtn}>
-              <Text style={s.closeBtnText}>✕</Text>
-            </TouchableOpacity>
-
-            <Text style={s.stickyTitle}>
-              {partidoActivo.equipo_local.nombre} vs {partidoActivo.equipo_visitante.nombre}
-            </Text>
-
-            <View style={s.steppersRow}>
-              <View style={s.stepperCol}>
-                <Image
-                  source={{
-                    uri: `https://flagcdn.com/w80/${partidoActivo.equipo_local.codigo_iso}.png`,
-                  }}
-                  style={s.stepperFlagImg}
-                  resizeMode="cover"
-                />
-                <View style={s.stepperBox}>
-                  <TouchableOpacity
-                    style={s.stepperBtn}
-                    onPress={() =>
-                      onGolesLocalChange(
-                        partidoActivo.id,
-                        Math.max(0, predActiva.goles_local - 1),
-                      )
-                    }
-                    disabled={predActiva.enviada}
-                  >
-                    <Text style={s.stepperBtnText}>−</Text>
-                  </TouchableOpacity>
-                  <Text style={s.stepperValue}>{predActiva.goles_local}</Text>
-                  <TouchableOpacity
-                    style={s.stepperBtn}
-                    onPress={() =>
-                      onGolesLocalChange(partidoActivo.id, predActiva.goles_local + 1)
-                    }
-                    disabled={predActiva.enviada}
-                  >
-                    <Text style={s.stepperBtnText}>+</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <Text style={s.stepperDash}>—</Text>
-
-              <View style={s.stepperCol}>
-                <Image
-                  source={{
-                    uri: `https://flagcdn.com/w80/${partidoActivo.equipo_visitante.codigo_iso}.png`,
-                  }}
-                  style={s.stepperFlagImg}
-                  resizeMode="cover"
-                />
-                <View style={s.stepperBox}>
-                  <TouchableOpacity
-                    style={s.stepperBtn}
-                    onPress={() =>
-                      onGolesVisitanteChange(
-                        partidoActivo.id,
-                        Math.max(0, predActiva.goles_visitante - 1),
-                      )
-                    }
-                    disabled={predActiva.enviada}
-                  >
-                    <Text style={s.stepperBtnText}>−</Text>
-                  </TouchableOpacity>
-                  <Text style={s.stepperValue}>{predActiva.goles_visitante}</Text>
-                  <TouchableOpacity
-                    style={s.stepperBtn}
-                    onPress={() =>
-                      onGolesVisitanteChange(
-                        partidoActivo.id,
-                        predActiva.goles_visitante + 1,
-                      )
-                    }
-                    disabled={predActiva.enviada}
-                  >
-                    <Text style={s.stepperBtnText}>+</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-
-            <View style={s.rewardsCard}>
-              <View style={s.rewardRow}>
-                <Text style={s.rewardLabel}>Marcador exacto</Text>
-                <Text style={s.rewardGold}>
-                  +{partidoActivo.recompensa_exacto.toLocaleString()} mAiles
-                </Text>
-              </View>
-              <View style={s.rewardRow}>
-                <Text style={s.rewardLabel}>Ganador correcto</Text>
-                <Text style={s.rewardBlue}>
-                  +{partidoActivo.recompensa_ganador} mAiles
-                </Text>
-              </View>
-              {rachaActiva && (
-                <View style={[s.rewardRow, s.rewardBorder]}>
-                  <Text style={s.rewardRacha}>Racha activa 🔥</Text>
-                  <Text style={s.rewardRacha}>
-                    +{partidoActivo.recompensa_racha} mAiles extra
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={[s.ctaBtn, predActiva.enviada && s.ctaBtnDone]}
-              onPress={() => onConfirmar(partidoActivo.id)}
-              disabled={predActiva.enviada || predActiva.submitting}
-              activeOpacity={0.85}
-            >
-              {predActiva.submitting ? (
-                <ActivityIndicator color="#002b73" />
-              ) : (
-                <Text
-                  style={[s.ctaBtnText, predActiva.enviada && { color: colors.primary }]}
-                >
-                  {predActiva.enviada
-                    ? `✓ Enviada · ${predActiva.goles_local}-${predActiva.goles_visitante}`
-                    : 'Confirmar predicción ⭐'}
-                </Text>
-              )}
-            </TouchableOpacity>
+        {/* Aviso semana no activa */}
+        {!esActiva && (
+          <View style={s.avisoBadge}>
+            <Text style={s.avisoText}>👁 Solo ver</Text>
           </View>
         )}
-      </KeyboardAvoidingView>
+      </View>
+
+      {/* Modal desplegable de semanas */}
+      <Modal
+        visible={dropdownOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDropdownOpen(false)}
+      >
+        <TouchableOpacity
+          style={s.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setDropdownOpen(false)}
+        >
+          <View style={s.dropdownContainer}>
+            <Text style={s.dropdownTitle}>Seleccionar semana</Text>
+            <ScrollView style={s.dropdownScroll} showsVerticalScrollIndicator={false}>
+              {semanas.map((s_) => {
+                const isSelected = s_ === semana;
+                const isActiva = s_ === semanaActual;
+                return (
+                  <TouchableOpacity
+                    key={s_}
+                    style={[s.dropdownItem, isSelected && s.dropdownItemSelected]}
+                    onPress={() => { onSemanaChange(s_); setDropdownOpen(false); }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={s.dropdownItemLeft}>
+                      <Text style={[s.dropdownItemText, isSelected && s.dropdownItemTextSelected]}>
+                        Semana {s_}
+                      </Text>
+                      {isActiva && (
+                        <View style={s.activaBadge}>
+                          <Text style={s.activaBadgeText}>Activa</Text>
+                        </View>
+                      )}
+                      {!isActiva && (
+                        <Text style={s.dropdownItemSub}>Solo visualización</Text>
+                      )}
+                    </View>
+                    {isSelected && (
+                      <Text style={s.dropdownCheckmark}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+      >
+        {loading ? (
+          <View style={s.emptyState}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={s.emptyText}>Cargando partidos...</Text>
+          </View>
+        ) : partidos.length === 0 ? (
+          <View style={s.emptyState}>
+            <Text style={s.emptyEmoji}>{error ? '⚠️' : '🏟️'}</Text>
+            <Text style={s.emptyTitle}>{error ? 'Error de acceso' : 'Sin partidos'}</Text>
+            <Text style={s.emptyText}>
+              {error
+                ? error
+                : `No hay partidos disponibles para la Semana ${semana}`}
+            </Text>
+            <Text style={[s.emptyText, { fontSize: 10, color: '#888', marginTop: 8 }]}>
+              Semana: {semana} · Semana activa: {semanaActual}
+            </Text>
+          </View>
+        ) : (
+          partidos.map((partido) => {
+            const pred = prediccionesState[partido.id];
+            const enviada = pred?.enviada ?? partido.prediccion_usuario != null;
+            const prediccion: PrediccionUsuario | null = enviada
+              ? pred
+                ? { goles_local: pred.goles_local, goles_visitante: pred.goles_visitante }
+                : partido.prediccion_usuario
+              : null;
+
+            return (
+              <PartidoCard
+                key={partido.id}
+                partido={partido}
+                semanaActual={semanaActual}
+                onVerDetalle={() => onVerDetalle(partido.id)}
+                prediccion={prediccion}
+                enviada={enviada}
+                pulseAnim={pulseAnim}
+              />
+            );
+          })
+        )}
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
       {/* FAB Chatbot */}
-      {!partidoActivo && (
-        <TouchableOpacity
-          style={[s.chatFab, { bottom: fabBottom }]}
-          onPress={onOpenChatbot}
-        >
-          <Text style={s.chatFabIcon}>🤖</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={[s.chatFab, { bottom: fabBottom }]}
+        onPress={onOpenChatbot}
+      >
+        <Text style={s.chatFabIcon}>🤖</Text>
+      </TouchableOpacity>
 
       <ChatbotModal visible={chatbotVisible} onClose={onCloseChatbot} />
       <BottomNav active="mundial" />
@@ -349,150 +269,119 @@ function getStyles(
     ligaText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
     medalText: { color: colors.textSecondary, fontSize: 10, fontWeight: '500' },
 
-    // Tabs de semana
-    semanaTabsRow: {
+    // ── Selector desplegable ──────────────────────────────────
+    selectorRow: {
       flexDirection: 'row',
+      alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 10,
       gap: 8,
-      backgroundColor: colors.background,
       borderBottomWidth: 0.5,
       borderBottomColor: colors.borderMedium,
+      backgroundColor: colors.background,
     },
-    semanaTab: {
+    selectorBtn: {
       flex: 1,
-      paddingVertical: 8,
-      borderRadius: 10,
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
       backgroundColor: colors.backgroundSecondary,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
       borderWidth: 0.5,
       borderColor: colors.borderMedium,
     },
-    semanaTabActive: {
+    selectorBtnActiva: {
       backgroundColor: colors.primaryDim,
       borderColor: colors.primary,
     },
-    semanaTabText: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
-    semanaTabTextActive: { color: colors.primary },
-
-    // Estados vacíos / carga
-    emptyState: {
-      alignItems: 'center',
-      paddingTop: 60,
-      gap: 12,
+    selectorBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    selectorCalendar: { fontSize: 20 },
+    selectorLabel: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontWeight: '800',
     },
+    selectorLabelActiva: { color: colors.primary },
+    selectorSub: { color: colors.textMuted, fontSize: 10, marginTop: 1 },
+    selectorChevron: { color: colors.textMuted, fontSize: 12, fontWeight: '700' },
+    selectorChevronActiva: { color: colors.primary },
+
+    avisoBadge: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderWidth: 0.5,
+      borderColor: colors.borderMedium,
+    },
+    avisoText: { color: colors.textMuted, fontSize: 11, fontWeight: '600' },
+
+    // ── Modal / Dropdown ──────────────────────────────────────
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-start',
+      paddingTop: 120,
+      paddingHorizontal: 16,
+    },
+    dropdownContainer: {
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 16,
+      borderWidth: 0.5,
+      borderColor: colors.borderMedium,
+      overflow: 'hidden',
+      maxHeight: 360,
+    },
+    dropdownTitle: {
+      color: colors.textMuted,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      paddingHorizontal: 16,
+      paddingTop: 14,
+      paddingBottom: 8,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.borderMedium,
+    },
+    dropdownScroll: { maxHeight: 300 },
+    dropdownItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.borderMedium,
+    },
+    dropdownItemSelected: {
+      backgroundColor: colors.primaryDim,
+    },
+    dropdownItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    dropdownItemText: {
+      color: colors.textPrimary,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    dropdownItemTextSelected: { color: colors.primary },
+    dropdownItemSub: { color: colors.textMuted, fontSize: 11 },
+    activaBadge: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    activaBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+    dropdownCheckmark: { color: colors.primary, fontSize: 16, fontWeight: '800' },
+
+    // ── Empty / loading ───────────────────────────────────────
+    emptyState: { alignItems: 'center', paddingTop: 60, gap: 12 },
     emptyEmoji: { fontSize: 48 },
     emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '800' },
     emptyText: { color: colors.textSecondary, fontSize: 13, textAlign: 'center' },
 
-    // Sticky bottom predicción
-    stickyBottom: {
-      position: 'absolute',
-      bottom: 72,
-      left: 0,
-      right: 0,
-      backgroundColor: colors.background,
-      borderTopWidth: 0.5,
-      borderTopColor: colors.borderMedium,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingHorizontal: 20,
-      paddingTop: 18,
-      paddingBottom: 12,
-    },
-    closeBtn: {
-      position: 'absolute',
-      top: 12,
-      right: 16,
-      zIndex: 10,
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: colors.cardBackground,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    closeBtnText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
-    stickyTitle: {
-      color: colors.textSecondary,
-      fontSize: 11,
-      fontWeight: '600',
-      textAlign: 'center',
-      marginBottom: 12,
-    },
-    steppersRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 14,
-    },
-    stepperCol: { alignItems: 'center', gap: 8 },
-    stepperFlagImg: { width: 44, height: 30, borderRadius: 4 },
-    stepperBox: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.cardBackground,
-      borderRadius: 12,
-      padding: 4,
-    },
-    stepperBtn: {
-      width: 36,
-      height: 36,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    stepperBtnText: { color: colors.primary, fontSize: 22, fontWeight: '700' },
-    stepperValue: {
-      color: colors.textPrimary,
-      fontSize: 24,
-      fontWeight: '800',
-      width: 40,
-      textAlign: 'center',
-    },
-    stepperDash: { color: colors.textMuted, fontSize: 28, fontWeight: '200' },
-    rewardsCard: {
-      backgroundColor: colors.backgroundSecondary,
-      borderRadius: 14,
-      padding: 12,
-      marginBottom: 12,
-    },
-    rewardRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 6,
-    },
-    rewardBorder: {
-      borderTopWidth: 0.5,
-      borderTopColor: colors.borderMedium,
-      paddingTop: 8,
-      marginTop: 4,
-    },
-    rewardLabel: { color: colors.textSecondary, fontSize: 11 },
-    rewardGold: { color: colors.gold, fontSize: 11, fontWeight: '700' },
-    rewardBlue: { color: colors.primary, fontSize: 11, fontWeight: '700' },
-    rewardRacha: { color: colors.warning, fontSize: 11, fontWeight: '700' },
-    ctaBtn: {
-      height: 52,
-      borderRadius: 16,
-      backgroundColor: colors.gold,
-      alignItems: 'center',
-      justifyContent: 'center',
-      elevation: 6,
-    },
-    ctaBtnDone: {
-      backgroundColor: colors.cardBackground,
-      borderWidth: 1,
-      borderColor: colors.primary,
-    },
-    ctaBtnText: {
-      color: colors.textOnGold,
-      fontSize: 15,
-      fontWeight: '800',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-
-    // FAB
+    // ── FAB ───────────────────────────────────────────────────
     chatFab: {
       position: 'absolute',
       right: 20,

@@ -69,7 +69,7 @@ export function useMundialPartidos(semana: number, userId: number | null) {
         .schema('mundial')
         .from('partidos_mundial')
         .select(`
-          id, semana, jornada, fecha_hora, cierre_prediccion, estado,
+          id, semana, jornada, fecha_hora, estado,
           recompensa_exacto, recompensa_ganador, recompensa_racha,
           equipo_local:equipos_mundial!equipo_local_id(id, nombre, codigo_iso, codigo_fifa, ranking_fifa),
           equipo_visitante:equipos_mundial!equipo_visitante_id(id, nombre, codigo_iso, codigo_fifa, ranking_fifa),
@@ -80,7 +80,11 @@ export function useMundialPartidos(semana: number, userId: number | null) {
         .eq('semana', semana)
         .order('fecha_hora');
 
-      if (pErr) throw pErr;
+      if (pErr) {
+        console.error('[useMundialPartidos] Error query:', JSON.stringify(pErr));
+        throw pErr;
+      }
+      console.log('[useMundialPartidos] Partidos recibidos:', rawPartidos?.length ?? 0);
       if (!rawPartidos || rawPartidos.length === 0) {
         setPartidos([]);
         return;
@@ -184,6 +188,7 @@ export function useMundialPartidos(semana: number, userId: number | null) {
 
       setPartidos(result);
     } catch (e: any) {
+      console.error('[useMundialPartidos] Catch error:', JSON.stringify(e));
       setError(e?.message ?? 'Error cargando partidos');
     } finally {
       setLoading(false);
