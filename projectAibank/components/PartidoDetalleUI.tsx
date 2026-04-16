@@ -208,31 +208,37 @@ export default function PartidoDetalleUI({
           </View>
 
           {/* Bento: Forma reciente */}
-          {sl && sv && (
-            <View style={s.bentoCard}>
-              <Text style={s.bentoLabel}>FORMA RECIENTE</Text>
-              <View style={s.formaRow}>
-                <View style={s.formaDots}>
-                  {sl.forma.map((r, i) => (
-                    <View key={i} style={[s.dot, { backgroundColor: FORMA_COLOR[r] }]} />
-                  ))}
+          <View style={s.bentoCard}>
+            <Text style={s.bentoLabel}>FORMA RECIENTE</Text>
+            {sl && sv ? (
+              <>
+                <View style={s.formaRow}>
+                  <View style={s.formaDots}>
+                    {sl.forma.map((r, i) => (
+                      <View key={i} style={[s.dot, { backgroundColor: FORMA_COLOR[r] }]} />
+                    ))}
+                  </View>
+                  <View style={s.formaDots}>
+                    {sv.forma.map((r, i) => (
+                      <View key={i} style={[s.dot, { backgroundColor: FORMA_COLOR[r] }]} />
+                    ))}
+                  </View>
                 </View>
-                <View style={s.formaDots}>
-                  {sv.forma.map((r, i) => (
-                    <View key={i} style={[s.dot, { backgroundColor: FORMA_COLOR[r] }]} />
-                  ))}
+                <View style={s.rachaRow}>
+                  <View style={s.rachaBadge}>
+                    <Text style={s.rachaBadgeText}>{sl.racha_texto || 'Sin datos'}</Text>
+                  </View>
+                  <View style={[s.rachaBadge, s.rachaBadgeMuted]}>
+                    <Text style={s.rachaBadgeTextMuted}>{sv.racha_texto || 'Sin datos'}</Text>
+                  </View>
                 </View>
-              </View>
-              <View style={s.rachaRow}>
-                <View style={s.rachaBadge}>
-                  <Text style={s.rachaBadgeText}>{sl.racha_texto || 'Sin datos'}</Text>
-                </View>
-                <View style={[s.rachaBadge, s.rachaBadgeMuted]}>
-                  <Text style={s.rachaBadgeTextMuted}>{sv.racha_texto || 'Sin datos'}</Text>
-                </View>
-              </View>
-            </View>
-          )}
+              </>
+            ) : (
+              <Text style={[s.bentoLabel, { textAlign: 'center', marginTop: 4 }]}>
+                Sin estadísticas disponibles aún
+              </Text>
+            )}
+          </View>
 
           {/* Bento: FIFA Ranking + Goles */}
           <View style={s.bentoRow}>
@@ -244,26 +250,24 @@ export default function PartidoDetalleUI({
                 <Text style={s.rankSmall}>#{visitante.ranking_fifa || '—'}</Text>
               </View>
             </View>
-            {sl && sv && (
-              <View style={[s.bentoCard, s.bentoHalf]}>
-                <Text style={s.bentoLabel}>GOLES (A:R)</Text>
+            <View style={[s.bentoCard, s.bentoHalf]}>
+              <Text style={s.bentoLabel}>GOLES (A:R)</Text>
+              {sl && sv ? (
                 <View style={s.rankRow}>
-                  <Text style={s.rankBig}>
-                    {sl.goles_anotados}:{sl.goles_recibidos}
-                  </Text>
+                  <Text style={s.rankBig}>{sl.goles_anotados}:{sl.goles_recibidos}</Text>
                   <Text style={s.rankVs}> vs </Text>
-                  <Text style={s.rankSmall}>
-                    {sv.goles_anotados}:{sv.goles_recibidos}
-                  </Text>
+                  <Text style={s.rankSmall}>{sv.goles_anotados}:{sv.goles_recibidos}</Text>
                 </View>
-              </View>
-            )}
+              ) : (
+                <Text style={[s.bentoLabel, { marginTop: 4 }]}>Sin datos</Text>
+              )}
+            </View>
           </View>
 
           {/* Bento: Jugadores Clave */}
-          {sl && sv && sl.jugador_clave_nombre && sv.jugador_clave_nombre && (
-            <View style={s.bentoCard}>
-              <Text style={s.bentoLabel}>JUGADORES CLAVE 🏆</Text>
+          <View style={s.bentoCard}>
+            <Text style={s.bentoLabel}>JUGADORES CLAVE 🏆</Text>
+            {sl && sv && sl.jugador_clave_nombre && sv.jugador_clave_nombre ? (
               <View style={s.jugadoresRow}>
                 <View style={s.jugadorLeft}>
                   <View style={s.jugadorAvatar}>
@@ -296,8 +300,12 @@ export default function PartidoDetalleUI({
                   </View>
                 </View>
               </View>
-            </View>
-          )}
+            ) : (
+              <Text style={[s.bentoLabel, { textAlign: 'center', marginTop: 4 }]}>
+                Sin datos disponibles aún
+              </Text>
+            )}
+          </View>
 
           {/* Bento: H2H */}
           {partido.h2h && (
