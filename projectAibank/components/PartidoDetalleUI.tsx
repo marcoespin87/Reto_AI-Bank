@@ -279,16 +279,12 @@ export default function PartidoDetalleUI({
                   </View>
                   <View>
                     <Text style={s.jugadorNombre}>{sl.jugador_clave_nombre}</Text>
-                    <Text style={s.jugadorStats}>{sl.jugador_clave_stats}</Text>
                   </View>
                 </View>
                 <View style={s.jugadorRight}>
                   <View>
                     <Text style={[s.jugadorNombre, { textAlign: 'right', opacity: 0.7 }]}>
                       {sv.jugador_clave_nombre}
-                    </Text>
-                    <Text style={[s.jugadorStats, { textAlign: 'right' }]}>
-                      {sv.jugador_clave_stats}
                     </Text>
                   </View>
                   <View style={[s.jugadorAvatar, { borderColor: colors.borderStrong }]}>
