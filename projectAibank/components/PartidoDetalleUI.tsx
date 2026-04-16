@@ -142,10 +142,10 @@ export default function PartidoDetalleUI({
                   ⏱ Predicción cierra en {countdown.texto}
                 </Text>
               </Animated.View>
-            ) : !prediccionEnviada ? (
+            ) : !prediccionEnviada && countdown.critico ? (
               <View style={[s.countdownBadge, s.countdownBadgeLocked]}>
                 <Text style={s.countdownTextLocked}>
-                  🔒 {countdown.critico ? 'Menos de 24h para el partido' : 'No es tu semana activa'}
+                  🔒 Menos de 24h para el partido
                 </Text>
               </View>
             ) : null}
@@ -302,7 +302,7 @@ export default function PartidoDetalleUI({
           {/* Bento: H2H */}
           {partido.h2h && (
             <View style={s.bentoCard}>
-              <Text style={s.bentoLabel}>CARA A CARA (H2H)</Text>
+              <Text style={s.bentoLabel}>CARA A CARA</Text>
               <View style={s.h2hBar}>
                 <View
                   style={[s.h2hSegment, { flex: partido.h2h.ganados_a, backgroundColor: colors.primary }]}

@@ -117,12 +117,6 @@ export default function MundialUI({
           </Text>
         </TouchableOpacity>
 
-        {/* Aviso semana no activa */}
-        {!esActiva && (
-          <View style={s.avisoBadge}>
-            <Text style={s.avisoText}>👁 Solo ver</Text>
-          </View>
-        )}
       </View>
 
       {/* Modal desplegable de semanas */}

@@ -84,13 +84,6 @@ export default function PartidoCard({
         </Animated.View>
       )}
 
-      {/* Badge de "solo ver" cuando es otra semana */}
-      {esSemanaDistinta && (
-        <View style={s.soloVerBadge}>
-          <Text style={s.soloVerText}>👁 Solo visualización</Text>
-        </View>
-      )}
-
       {/* Fila de equipos */}
       <View style={s.teamsRow}>
         <View style={s.teamCol}>
@@ -146,7 +139,7 @@ export default function PartidoCard({
           </View>
         ) : esSemanaDistinta ? (
           <View style={[s.actionBtn, s.actionBtnView]}>
-            <Text style={s.actionBtnTextView}>👁 Ver detalles del partido</Text>
+            <Text style={s.actionBtnTextView}>Ver detalles de los equipos</Text>
           </View>
         ) : (
           <View style={[s.actionBtn, s.actionBtnLocked]}>

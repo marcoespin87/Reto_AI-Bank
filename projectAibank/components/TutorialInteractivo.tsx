@@ -25,7 +25,8 @@ const PASOS = [
   { titulo: '¡Ganaste mAiles!',               boton: 'Ver mis cromos →'    },
   { titulo: '¡Ganaste cromos!',               boton: 'Ver mi álbum →'      },
   { titulo: 'Tu álbum Mundial 2026',          boton: 'Ver predicciones →'  },
-  { titulo: 'Predice los partidos',           boton: 'Ver el chatbot →'    },
+  { titulo: 'Predice los partidos',           boton: 'Semanas de predicción →' },
+  { titulo: 'Semanas de predicción',          boton: 'Ver el chatbot →'    },
   { titulo: 'Tu AI Coach',                    boton: 'Ver grupos →'        },
   { titulo: 'Únete a un equipo',              boton: 'Ver premios →'       },
   { titulo: 'Tu premio de temporada',         boton: '¡Empezar ahora!'  },
@@ -403,8 +404,70 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
               </View>
             )}
 
-            {/* ── PASO 6: Chatbot ── */}
+            {/* ── PASO 6: Semanas de predicción ── */}
             {paso === 6 && (
+              <View style={s.contenido}>
+                <UbicacionChip icono="⚽" texto="Mundial → selector de semana (arriba)" />
+
+                {/* Simulación del selector de semana */}
+                <View style={[s.semanaSelector, { backgroundColor: colors.primaryDim, borderColor: colors.primary }]}>
+                  <Text style={s.semanaSelectorCalendar}>📅</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.semanaSelectorLabel, { color: colors.primary }]}>
+                      Semana 1  ✦ Activa
+                    </Text>
+                    <Text style={[s.semanaSelectorSub, { color: colors.textMuted }]}>
+                      Predicciones habilitadas
+                    </Text>
+                  </View>
+                  <Text style={[s.semanaSelectorChevron, { color: colors.primary }]}>▼</Text>
+                </View>
+
+                <View style={[s.semanaSelector, { backgroundColor: colors.cardBackground, borderColor: colors.borderMedium }]}>
+                  <Text style={s.semanaSelectorCalendar}>📅</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.semanaSelectorLabel, { color: colors.textPrimary }]}>
+                      Semana 2
+                    </Text>
+                    <Text style={[s.semanaSelectorSub, { color: colors.textMuted }]}>
+                      Solo visualización
+                    </Text>
+                  </View>
+                  <Text style={[s.semanaSelectorChevron, { color: colors.textMuted }]}>▼</Text>
+                </View>
+
+                {/* Simulación partido bloqueado */}
+                <View style={[s.partidoBloqueado, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderMedium }]}>
+                  <View style={s.teamsRow}>
+                    <View style={s.teamCol}>
+                      <View style={[s.flagCircle, { backgroundColor: colors.cardBackground, borderColor: colors.borderMedium }]}>
+                        <Text style={s.flagEmoji}>🇺🇸</Text>
+                      </View>
+                      <Text style={[s.teamName, { color: colors.textPrimary }]}>Estados Unidos</Text>
+                    </View>
+                    <Text style={[s.vsText, { color: colors.textMuted }]}>VS</Text>
+                    <View style={s.teamCol}>
+                      <View style={[s.flagCircle, { backgroundColor: colors.cardBackground, borderColor: colors.borderMedium }]}>
+                        <Text style={s.flagEmoji}>🇲🇽</Text>
+                      </View>
+                      <Text style={[s.teamName, { color: colors.textPrimary }]}>México</Text>
+                    </View>
+                  </View>
+                  <View style={[s.bloqueadoBadge, { backgroundColor: colors.cardBackground, borderColor: colors.borderMedium }]}>
+                    <Text style={[s.bloqueadoBadgeText, { color: colors.textMuted }]}>Ver detalles de los equipos</Text>
+                  </View>
+                </View>
+
+                <View style={[s.infoBox, { backgroundColor: colors.errorDim, borderColor: colors.error }]}>
+                  <Text style={[s.infoText, { color: colors.error }]}>
+                    ⚠️ Solo puedes predecir los partidos de tu semana activa. Si navegas a una semana diferente, podrás ver los partidos pero no podrás enviar predicciones.
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* ── PASO 7: Chatbot ── */}
+            {paso === 7 && (
               <View style={s.contenido}>
                 <UbicacionChip icono="⚽" texto="Mundial → botón 🤖 flotante (esquina inferior derecha)" />
 
@@ -443,8 +506,8 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
               </View>
             )}
 
-            {/* ── PASO 7: Grupos ── */}
-            {paso === 7 && (
+            {/* ── PASO 8: Grupos ── */}
+            {paso === 8 && (
               <View style={s.contenido}>
                 <UbicacionChip icono="👥" texto="Selecciona Grupo en el menú inferior" />
 
@@ -481,8 +544,8 @@ export default function TutorialInteractivo({ visible, onCompletar, pasoInicial 
               </View>
             )}
 
-            {/* ── PASO 8: Premios ── */}
-            {paso === 8 && (
+            {/* ── PASO 9: Premios ── */}
+            {paso === 9 && (
               <View style={s.contenido}>
                 <UbicacionChip icono="👤" texto="Perfil → Mi Premio de Temporada" />
 
@@ -660,7 +723,17 @@ const s = StyleSheet.create({
   rewardLabel: { fontSize: 13 },
   rewardVal: { fontSize: 13, fontWeight: '700' },
 
-  // Paso 6 - chatbot
+  // Paso 6 - semanas de predicción
+  semanaSelector: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
+  semanaSelectorCalendar: { fontSize: 20 },
+  semanaSelectorLabel: { fontSize: 14, fontWeight: '800' },
+  semanaSelectorSub: { fontSize: 10, marginTop: 1 },
+  semanaSelectorChevron: { fontSize: 12, fontWeight: '700' },
+  partidoBloqueado: { borderRadius: 14, padding: 14, borderWidth: 0.5, gap: 12 },
+  bloqueadoBadge: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 0.5, alignItems: 'center' },
+  bloqueadoBadgeText: { fontSize: 12, fontWeight: '600' },
+
+  // Paso 7 - chatbot
   chatbotDemo: { borderRadius: 14, padding: 14, borderWidth: 0.5, gap: 10 },
   chatMsgBot: { flexDirection: 'row', justifyContent: 'flex-start' },
   chatMsgUser: { flexDirection: 'row', justifyContent: 'flex-end' },
@@ -672,7 +745,7 @@ const s = StyleSheet.create({
   fabSimulado: { width: 50, height: 50, borderRadius: 25, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   fabEmoji: { fontSize: 26 },
 
-  // Paso 7 - grupos
+  // Paso 8 - grupos
   grupoOpciones: { gap: 8 },
   grupoOpcion: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, padding: 14, borderWidth: 0.5 },
   grupoOpcionIcon: { fontSize: 24 },
@@ -686,7 +759,7 @@ const s = StyleSheet.create({
   votaBtn: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
   votaBtnText: { fontSize: 13, fontWeight: '700' },
 
-  // Paso 8 - premios
+  // Paso 9 - premios
   premioFinalCard: { borderRadius: 16, padding: 20, borderWidth: 0.5, alignItems: 'center', gap: 10 },
   premioFinalEmoji: { fontSize: 56 },
   premioFinalTitulo: { fontSize: 20, fontWeight: '800', textAlign: 'center' },
